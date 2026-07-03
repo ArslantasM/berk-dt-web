@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Berk Digital Twin — Demo Galerisi</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#161a22; --line:#262c38; --fg:#e6e6e6; --muted:#8b94a6; --accent:#5cc8ff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); display: flex; height: 100vh; overflow: hidden; }
+    #sidebar { width: 260px; flex: 0 0 260px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+    #sidebar .brand { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    #sidebar .brand a { color: inherit; text-decoration: none; }
+    #sidebar .brand b { font-size: 1.0rem; }
+    #sidebar .brand span { display:block; color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+    #list { overflow-y: auto; padding: 8px; flex: 1; }
+    .item { padding: 10px 12px; border-radius: 8px; cursor: pointer; display:flex; align-items:center; gap:10px; font-size: 0.92rem; }
+    .item:hover { background: #1d2330; }
+    .item.active { background: #20304a; color: var(--accent); }
+    .item .dot { width: 8px; height: 8px; border-radius: 50%; background: #3a4252; flex: 0 0 8px; }
+    .item.active .dot { background: var(--accent); }
+    .item .tag { margin-left: auto; font-size: 0.68rem; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+    #sidebar .foot { padding: 12px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.74rem; }
+    #stage { position: relative; flex: 1; min-width: 0; }
+    #canvas-wrap { position: absolute; inset: 0; }
+    #topbar { position: absolute; top: 0; left: 0; right: 0; padding: 14px 20px; pointer-events: none; background: linear-gradient(#0f1115dd, transparent); z-index: 5; }
+    #topbar h2 { margin: 0; font-size: 1.05rem; }
+    #topbar p { margin: 4px 0 0; color: var(--muted); font-size: 0.86rem; max-width: 760px; }
+    .badge { font-family: ui-monospace, monospace; color: var(--accent); font-size: 0.8rem; }
+    .arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; display: flex; align-items: center; justify-content: center;
+      background: #161a22cc; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-size: 22px; z-index: 6; user-select: none; }
+    .arrow:hover { background: #20304a; color: var(--accent); }
+    #prev { left: 14px; } #next { right: 14px; }
+    #controls { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 6; }
+    .btn { background: #161a22cc; border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-size: 0.85rem; }
+    .btn:hover { background: #20304a; color: var(--accent); }
+    /* etkileşimli demo overlay paneli (Det demoları: zaman cetveli, netcode) */
+    #demo-ui { position: absolute; top: 78px; right: 14px; z-index: 7; width: 320px; max-width: calc(100% - 76px); }
+    #demo-ui .dpanel { background: #161a22ee; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(4px); }
+    #demo-ui .drow { display: flex; align-items: center; gap: 8px; margin: 7px 0; flex-wrap: wrap; }
+    #demo-ui input[type=range] { flex: 1; min-width: 90px; accent-color: var(--accent); }
+    #demo-ui button { background: #20262f; border: 1px solid var(--line); color: var(--fg); border-radius: 7px; padding: 6px 11px; font-size: 0.82rem; cursor: pointer; }
+    #demo-ui button:hover { background: #20304a; color: var(--accent); }
+    #demo-ui button.prim { background: #1f6feb; color: #fff; border: 0; }
+    #demo-ui .lbl { font-size: 0.78rem; color: var(--muted); }
+    #demo-ui .proof { font-size: 0.78rem; min-height: 1.1em; font-family: ui-monospace, monospace; }
+    #demo-ui .ok { color: #3fb950; } #demo-ui .warn { color: #ffd166; }
+    /* Kiosk / sunum modu (?kiosk=SANIYE): tam ekran sahne, kontrolsüz, imleçsiz. */
+    body.kiosk #sidebar, body.kiosk .arrow, body.kiosk #controls { display: none; }
+    body.kiosk { cursor: none; }
+    body.kiosk #topbar h2 { font-size: 1.35rem; }
+    body.kiosk #topbar p { font-size: 1.0rem; }
+  </style>
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <aside id="sidebar">
+    <div class="brand"><a href="index.html"><b>Berk Digital Twin</b><span>Deterministik fizik · tarayıcıda (Fx64 · WASM) · ← ana sayfa</span></a></div>
+    <div id="list"></div>
+    <div class="foot">Aynı sim → her platformda <b>bit-aynı</b>. <span class="badge" id="hash">…</span></div>
+  </aside>
+  <main id="stage">
+    <div id="canvas-wrap"></div>
+    <div id="topbar"><h2 id="title">—</h2><p id="desc"></p></div>
+    <div id="demo-ui"></div>
+    <div class="arrow" id="prev" title="Önceki (←)">‹</div>
+    <div class="arrow" id="next" title="Sonraki (→)">›</div>
+    <div id="controls"><button class="btn" id="reset">Sıfırla</button><button class="btn" id="pause">Duraklat</button></div>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import init, { WasmWorld3, WasmFluid3, WasmCloth, WasmPendulum, WasmNavBot, WasmGrainWorld } from '../pkg/berk_dt_wasm.js';
+
+    // ---- Sahne ----
+    const wrap = document.getElementById('canvas-wrap');
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    wrap.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f1115);
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x202028, 1.15));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.0); dl.position.set(8, 16, 10); scene.add(dl);
+    let group = new THREE.Group(); scene.add(group);
+
+    function resize() { const w = wrap.clientWidth, h = wrap.clientHeight; renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+    window.addEventListener('resize', resize);
+    function setCam(px,py,pz, tx,ty,tz){ camera.position.set(px,py,pz); controls.target.set(tx,ty,tz); controls.update(); }
+
+    // ---- Mesh fabrikaları ----
+    const PAL = [0x5cc8ff, 0xff7a59, 0x9b8cff, 0x4be0a0, 0xffd166, 0xff5fa2];
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.08 });
+    const boxMesh = (hx,hy,hz,c) => new THREE.Mesh(new THREE.BoxGeometry(2*hx,2*hy,2*hz), mat(c));
+    const sphMesh = (r,c) => new THREE.Mesh(new THREE.SphereGeometry(r,18,14), mat(c));
+    const capMesh = (r,hh,c) => new THREE.Mesh(new THREE.CapsuleGeometry(r, 2*hh, 6, 14), mat(c));
+    function ground(size,c=0x232a38){ const m = boxMesh(size,0.5,size,c); return m; }
+    function waterPlane(level,size){ const m = new THREE.Mesh(new THREE.PlaneGeometry(size,size), new THREE.MeshStandardMaterial({color:0x2a6cff, transparent:true, opacity:0.32, roughness:0.15})); m.rotation.x=-Math.PI/2; m.position.y=level; return m; }
+    // Animasyonlu (dalgalı) su yüzeyi — görsel: taban dalgalar + cisim girişlerinden halka dalga. Fizik/hash'i ETKİLEMEZ.
+    function wavyWater(level,size,seg){
+      const g=new THREE.PlaneGeometry(size,size,seg,seg);
+      const m=new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0x2a6cff, transparent:true, opacity:0.5, roughness:0.1, metalness:0.25, side:THREE.DoubleSide}));
+      m.rotation.x=-Math.PI/2; m.position.y=level;
+      g.userData.base=Float32Array.from(g.attributes.position.array); // düz (lz=0) referans
+      return m;
+    }
+    // Yerel düzlem (lx,ly) → dünya (x=lx, z=-ly); yerel lz yüksekliği doğrudan dünya-y'sine biner.
+    function animateWater(mesh, time, bodies){
+      const pos=mesh.geometry.attributes.position, base=mesh.geometry.userData.base, n=pos.count;
+      for(let i=0;i<n;i++){
+        const lx=base[i*3], ly=base[i*3+1], wz=-ly;
+        let h=Math.sin(lx*0.55+time*1.7)*0.11 + Math.cos(ly*0.48+time*1.25)*0.09 + Math.sin((lx+ly)*0.3+time*0.9)*0.05;
+        for(const b of bodies){ const cx=b.obj.position.x, cz=b.obj.position.z, sub=Math.max(0,Math.min(1,0.7-b.obj.position.y));
+          if(sub>0){ const d=Math.hypot(lx-cx, wz-cz); h += Math.exp(-d*d*0.45)*Math.sin(d*3.0-time*5.5)*0.22*sub; } }
+        pos.array[i*3+2]=h;
+      }
+      pos.needsUpdate=true; mesh.geometry.computeVertexNormals();
+    }
+    function terrainMesh(rows,cols,cell,ox,oy,oz,heights){
+      const g=new THREE.BufferGeometry(), v=[], idx=[];
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++) v.push(ox+c*cell, oy+heights[r*cols+c], oz+r*cell);
+      for(let r=0;r<rows-1;r++)for(let c=0;c<cols-1;c++){ const i=r*cols+c; idx.push(i,i+cols,i+1, i+1,i+cols,i+cols+1); }
+      g.setAttribute('position', new THREE.Float32BufferAttribute(v,3)); g.setIndex(idx); g.computeVertexNormals();
+      return new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0x3d6b48, roughness:0.95}));
+    }
+    function clothGeom(cols,rows){
+      const g=new THREE.BufferGeometry(), idx=[];
+      for(let z=0;z<rows-1;z++)for(let x=0;x<cols-1;x++){ const i=z*cols+x; idx.push(i,i+cols,i+1, i+1,i+cols,i+cols+1); }
+      g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(cols*rows*3),3)); g.setIndex(idx);
+      return g;
+    }
+    // body id → mesh senkronu (transforms(): cisim başına 7 f32)
+    function sync(world, list){ const t = world.transforms(); for(const b of list){ const o=b.id*7; b.obj.position.set(t[o],t[o+1],t[o+2]); b.obj.quaternion.set(t[o+3],t[o+4],t[o+5],t[o+6]); } }
+
+    // ---- Demolar ----
+    const demos = [
+      // ===== Determinizm vitrini =====
+      { id:'timeline', name:'Zaman Cetveli (Rollback)', tag:'Det',
+        desc:'Snapshot\'SIZ rollback: bir kareye gitmek = sıfırdan o kareye kadar yeniden simüle etmek. Determinist olduğundan SONUÇ HER ZAMAN BİREBİR AYNI (state_hash eşleşir). Cetveli geri/ileri sürükle → durum aynen yeniden türetilir; "Burada dürt" zaman çizgisini ayrı bir evrene çatallar.',
+        init(){
+          this.MAXF=360; this.frame=0; this.playing=true; this.inputs=[]; this.gold={};
+          // gövde reçeteleri (dünya gövdeleri ve mesh\'ler AYNI sırada üretilir → id=index)
+          this.specs=[{k:0,t:'box',a:[0,-0.5,0,9,0.5,9],c:0x232a38}];
+          for(let i=0;i<8;i++) this.specs.push({k:1,t:'sph',a:[(i%4-1.5)*1.25,5+(i%3)*0.7,(i<4?-1.1:1.1),0.45],c:PAL[i%PAL.length]});
+          for(let i=0;i<6;i++) this.specs.push({k:1,t:'box',a:[(i-2.5)*1.05,7.5+i*0.45,0,0.45,0.45,0.45],c:PAL[i%PAL.length]});
+          this.b=[]; this.specs.forEach((s,i)=>{ const o=(s.t==='box')?boxMesh(s.a[3],s.a[4],s.a[5],s.c):sphMesh(s.a[3],s.c); group.add(o); this.b.push({id:i,obj:o}); });
+          this._simTo(0);
+          const ui=document.getElementById('demo-ui');
+          ui.innerHTML='<div class="dpanel">'
+            +'<div class="drow"><button id="tl-play" class="prim">⏸ Duraklat</button><span class="lbl" id="tl-frame">kare 0</span></div>'
+            +'<div class="drow"><input id="tl-slider" type="range" min="0" max="'+this.MAXF+'" value="0"></div>'
+            +'<div class="drow"><button id="tl-nudge">⚡ Burada dürt (çatalla)</button><button id="tl-fresh">↺ Sıfırla</button></div>'
+            +'<div class="drow proof" id="tl-proof"></div></div>';
+          this.elFrame=ui.querySelector('#tl-frame'); this.elSlider=ui.querySelector('#tl-slider'); this.elProof=ui.querySelector('#tl-proof'); this.elPlay=ui.querySelector('#tl-play');
+          this.elPlay.onclick=()=>{ this.playing=!this.playing; this.elPlay.textContent=this.playing?'⏸ Duraklat':'▶ Oynat'; };
+          this.elSlider.oninput=()=>{ this.playing=false; this.elPlay.textContent='▶ Oynat'; this._simTo(+this.elSlider.value); };
+          ui.querySelector('#tl-nudge').onclick=()=>this._nudge();
+          ui.querySelector('#tl-fresh').onclick=()=>{ this.inputs=[]; this.gold={}; this.playing=true; this.elPlay.textContent='⏸ Duraklat'; this._simTo(0); };
+          setCam(12,8,14, 0,1.5,0);
+        },
+        _scene(){ const w=new WasmWorld3(0,-10,0); for(const s of this.specs){ if(s.t==='box') w.add_box(s.k,s.a[0],s.a[1],s.a[2],s.a[3],s.a[4],s.a[5],1); else w.add_sphere(s.k,s.a[0],s.a[1],s.a[2],s.a[3],1); } return w; },
+        _apply(w,f){ for(const inp of this.inputs) if(inp.f===f) w.set_linvel(inp.id,inp.vx,inp.vy,inp.vz); },
+        _simTo(f){ if(this.w) this.w.free(); this.w=this._scene(); for(let k=0;k<f;k++){ this._apply(this.w,k); this.w.step(1/60); } this.frame=f; const h=this.w.state_hash(); sync(this.w,this.b);
+          if(this.elFrame){ this.elFrame.textContent='kare '+f; this.elSlider.value=f;
+            if(this.gold[f]!==undefined) this.elProof.innerHTML=(this.gold[f]===h)?'<span class="ok">✓ kare '+f+' birebir yeniden türetildi · 0x'+h+'</span>':'<span class="warn">tutarsızlık?!</span>';
+            else this.elProof.innerHTML='<span class="lbl">0x'+h+'</span>'; }
+          return h; },
+        _nudge(){ this.inputs.push({f:this.frame,id:1,vx:8,vy:2,vz:0}); for(const k in this.gold) if(+k>=this.frame) delete this.gold[k]; this.w.set_linvel(1,8,2,0);
+          if(this.elProof) this.elProof.innerHTML='<span class="warn">⚡ kare '+this.frame+'\'te çatallandı — bundan sonrası farklı evren</span>'; },
+        update(){ if(this.playing && this.frame<this.MAXF){ this._apply(this.w,this.frame); this.w.step(1/60); this.frame++; const h=this.w.state_hash(); this.gold[this.frame]=h; sync(this.w,this.b); if(this.elFrame){ this.elFrame.textContent='kare '+this.frame; this.elSlider.value=this.frame; } return h; } return ''; },
+        dispose(){ this.w?.free?.(); this.w=null; } },
+
+      { id:'netcode', name:'Rollback Netcode', tag:'Det',
+        desc:'GGPO tarzı lockstep + rollback. Sol = "yerel (tahmin)", sağ = "otorite". Bir input ağ gecikmesiyle (slider) geç ulaşır → yerel önce yanlış tahmin eder (sarı ajan kutusu ayrışır), input gelince yerel SIFIRDAN rollback yapıp düzeltir → iki dünya yeniden BİREBİR (state_hash eşit). Determinizm olmadan bu mümkün değildir.',
+        init(){
+          this.frame=0; this.lat=12; this.local=[]; this.msg=''; this.msgT=0; this.dx=7.0; this.agent=1;
+          this.specs=[{k:0,t:'box',a:[0,-0.5,0,3.4,0.5,4],c:0x232a38}];
+          for(let i=0;i<5;i++) this.specs.push({k:1,t:'box',a:[(i-2)*0.9,1.0+(i%2)*0.5,0,0.4,0.4,0.4],c:PAL[i%PAL.length]});
+          this.bl=[]; this.ba=[];
+          this.specs.forEach((s,i)=>{ const col=(i===this.agent)?0xffd166:s.c;
+            const ol=(s.t==='box')?boxMesh(s.a[3],s.a[4],s.a[5],col):sphMesh(s.a[3],col); group.add(ol); this.bl.push({id:i,obj:ol});
+            const oa=(s.t==='box')?boxMesh(s.a[3],s.a[4],s.a[5],col):sphMesh(s.a[3],col); group.add(oa); this.ba.push({id:i,obj:oa}); });
+          this.localW=this._scene(); this.authW=this._scene(); this._sync();
+          const ui=document.getElementById('demo-ui');
+          ui.innerHTML='<div class="dpanel">'
+            +'<div class="drow"><span class="lbl">Ağ gecikmesi</span><input id="nc-lat" type="range" min="2" max="40" value="12"><span class="lbl" id="nc-latv">12 kare</span></div>'
+            +'<div class="drow"><button id="nc-send" class="prim">📡 Geç input gönder →</button></div>'
+            +'<div class="drow proof" id="nc-proof"></div></div>';
+          this.elLatv=ui.querySelector('#nc-latv'); this.elProof=ui.querySelector('#nc-proof');
+          ui.querySelector('#nc-lat').oninput=(e)=>{ this.lat=+e.target.value; this.elLatv.textContent=this.lat+' kare'; };
+          ui.querySelector('#nc-send').onclick=()=>this._send();
+          setCam(3.5,7.5,17, 3.5,1,0);
+        },
+        _scene(){ const w=new WasmWorld3(0,-10,0); for(const s of this.specs){ if(s.t==='box') w.add_box(s.k,s.a[0],s.a[1],s.a[2],s.a[3],s.a[4],s.a[5],1); else w.add_sphere(s.k,s.a[0],s.a[1],s.a[2],s.a[3],1); } return w; },
+        _sync(){ sync(this.localW,this.bl); const t=this.authW.transforms(); for(const b of this.ba){ const o=b.id*7; b.obj.position.set(t[o]+this.dx,t[o+1],t[o+2]); b.obj.quaternion.set(t[o+3],t[o+4],t[o+5],t[o+6]); } },
+        _send(){ const inp={f:this.frame,vx:0,vy:5,vz:6,arrive:this.frame+this.lat}; this.local.push(inp); this.authW.set_linvel(this.agent,inp.vx,inp.vy,inp.vz); this.msg='<span class="warn">📡 input kare '+this.frame+' — yerel '+this.lat+' kare sonra öğrenecek</span>'; this.msgT=this.lat; },
+        _rollbackLocal(){ if(this.localW) this.localW.free(); this.localW=this._scene(); for(let k=0;k<this.frame;k++){ for(const inp of this.local) if(inp.f===k && inp.arrive<=this.frame) this.localW.set_linvel(this.agent,inp.vx,inp.vy,inp.vz); this.localW.step(1/60); } },
+        update(){ this.authW.step(1/60); let rolled=false; for(const inp of this.local) if(inp.arrive===this.frame){ this._rollbackLocal(); rolled=true; } this.localW.step(1/60); this.frame++; this._sync();
+          const hl=this.localW.state_hash(), ha=this.authW.state_hash();
+          if(rolled){ this.msg='<span class="ok">↺ ROLLBACK — yerel sıfırdan yeniden simüle edildi, düzeltildi</span>'; this.msgT=60; }
+          if(this.msgT>0){ this.elProof.innerHTML=this.msg; this.msgT--; }
+          else this.elProof.innerHTML=(hl===ha)?'<span class="ok">🟢 SENKRON — iki dünya bit-aynı (state_hash eşit)</span>':'<span class="warn">🟡 TAHMİN — yerel ayrık, düzeltme bekleniyor…</span>';
+          if(this.frame>=600){ this.frame=0; this.local=[]; this.localW.free(); this.authW.free(); this.localW=this._scene(); this.authW=this._scene(); }
+          return ha; },
+        dispose(){ this.localW?.free?.(); this.authW?.free?.(); this.localW=this.authW=null; } },
+
+      { id:'pendulum', name:'Kaotik Sarkaç (Featherstone)', tag:'Det',
+        desc:'Reduced-coordinate Featherstone O(n) ABA ile 4-bağlantılı KAOTİK sarkaç. Kaosta en küçük fark üssel büyür — ama sabit-nokta (Fx64) olduğundan yörünge HER platformda bit-aynı ve tekrar-üretilebilir (state_hash). Float motorlarda imkânsız. Mavi iz: ucun kaotik yörüngesi.',
+        init(){ this.N=4; this.p=new WasmPendulum(this.N);
+          this.joints=[]; for(let i=0;i<=this.N;i++){ const o=sphMesh(i===0?0.16:0.13, i===0?0x8893a8:PAL[i%PAL.length]); group.add(o); this.joints.push(o); }
+          this.rodGeo=new THREE.BufferGeometry(); this.rodGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array((this.N+1)*3),3));
+          this.rod=new THREE.Line(this.rodGeo, new THREE.LineBasicMaterial({color:0xaeb9d0})); group.add(this.rod);
+          this.maxTrail=600; this.trail=[]; this.trailPos=new Float32Array(this.maxTrail*3);
+          this.trailGeo=new THREE.BufferGeometry(); this.trailGeo.setAttribute('position', new THREE.Float32BufferAttribute(this.trailPos,3)); this.trailGeo.setDrawRange(0,0);
+          this.trailLine=new THREE.Line(this.trailGeo, new THREE.LineBasicMaterial({color:0x37a6ff, transparent:true, opacity:0.75})); group.add(this.trailLine);
+          setCam(0,-1.5,11, 0,-2.2,0); this._sync();
+        },
+        _sync(){ const p=this.p.positions(); const arr=this.rodGeo.attributes.position.array;
+          for(let i=0;i<=this.N;i++){ const x=p[i*2], y=p[i*2+1]; this.joints[i].position.set(x,y,0); arr[i*3]=x; arr[i*3+1]=y; arr[i*3+2]=0; }
+          this.rodGeo.attributes.position.needsUpdate=true;
+          const tx=p[this.N*2], ty=p[this.N*2+1]; this.trail.push(tx,ty,0); if(this.trail.length>this.maxTrail*3) this.trail.splice(0,3);
+          this.trailPos.set(this.trail); this.trailGeo.setDrawRange(0, this.trail.length/3); this.trailGeo.attributes.position.needsUpdate=true;
+        },
+        update(){ for(let s=0;s<4;s++) this.p.step(1/240); this._sync(); return this.p.state_hash(); },
+        dispose(){ this.p?.free?.(); this.p=null; } },
+
+      { id:'maze', name:'Robot Labirent Navigasyonu', tag:'Det',
+        desc:'Endüstriyel robot, BVH-hızlandırılmış 64-ışınlı LiDAR (camgöbeği yelpaze + isabet noktaları) ile çevresini TARAR; 5 reaktif menzil sensörüyle (sarı) açık tarafa dönüp YEŞİL hedefe yol bulur. Algı (LiDAR raycast) → karar → hareket döngüsünün TAMAMI sabit-noktada (Fx64) → hem robotun yolu (mavi iz) hem LiDAR taraması her platformda BİT-AYNI ve tekrar-üretilebilir. LiDAR ışın sorgusu BVH ile O(ışın·log n) — WCET düşük, sonuç kaba-kuvvetle bit-aynı. Otonomi denetimi/sertifikasyon için kritik; float motorlarda hem yol hem algı platforma göre kayar.',
+        init(){ this.r=new WasmNavBot();
+          // dış sınır + slalom bariyerleri (xz: [cx,cz,hx,hz])
+          const W=[[0,10,10,0.3],[0,-10,10,0.3],[-10,0,0.3,10],[10,0,0.3,10],[-2.5,-3,0.3,4],[2.5,3,0.3,4]];
+          for(const w of W){ this.r.add_wall(w[0],w[1],w[2],w[3]); const m=boxMesh(w[2],1.2,w[3],0x39435a); m.position.set(w[0],1.2,w[1]); group.add(m); }
+          // zemin
+          const fl=new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:0x171c26})); fl.rotation.x=-Math.PI/2; fl.position.y=0; group.add(fl);
+          this.r.set_start(-8,-8, 0.6); this.r.set_goal(8,8, 0.8);
+          // hedef
+          const goal=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,0.12,24), new THREE.MeshStandardMaterial({color:0x4be0a0, transparent:true, opacity:0.6})); goal.position.set(8,0.06,8); group.add(goal);
+          // robot (koni → ileri yön)
+          this.pivot=new THREE.Group(); group.add(this.pivot);
+          const cone=new THREE.Mesh(new THREE.ConeGeometry(0.45,1.1,18), new THREE.MeshStandardMaterial({color:0xffd166})); cone.rotation.x=Math.PI/2; this.pivot.add(cone);
+          // LiDAR yelpazesi (BVH-hızlandırılmış tam tarama → deterministik algı)
+          this.lidarN=64; this.lidarFov=3.6; this.lidarRange=9;
+          const lg=new THREE.BufferGeometry();
+          this.lidarPos=new Float32Array(this.lidarN*6); this.lidarCol=new Float32Array(this.lidarN*6);
+          lg.setAttribute('position', new THREE.BufferAttribute(this.lidarPos,3));
+          lg.setAttribute('color', new THREE.BufferAttribute(this.lidarCol,3));
+          this.lidarLines=new THREE.LineSegments(lg, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.5})); group.add(this.lidarLines);
+          this.lidarHitGeo=new THREE.BufferGeometry(); this.lidarHitPos=new Float32Array(this.lidarN*3);
+          this.lidarHitGeo.setAttribute('position', new THREE.BufferAttribute(this.lidarHitPos,3));
+          this.lidarHitPts=new THREE.Points(this.lidarHitGeo, new THREE.PointsMaterial({color:0x4be0ff, size:0.16})); group.add(this.lidarHitPts);
+          // reaktif sensör ışınları (denetleyicinin 5 sensörü)
+          this.rays=[]; for(let i=0;i<5;i++){ const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6),3)); const l=new THREE.Line(g, new THREE.LineBasicMaterial({color:0xffe08a, transparent:true, opacity:0.85})); group.add(l); this.rays.push(l); }
+          // iz
+          this.trailMax=1500; this.trail=[]; this.trailPos=new Float32Array(this.trailMax*3);
+          this.trailGeo=new THREE.BufferGeometry(); this.trailGeo.setAttribute('position', new THREE.Float32BufferAttribute(this.trailPos,3)); this.trailGeo.setDrawRange(0,0);
+          this.trailLine=new THREE.Line(this.trailGeo, new THREE.LineBasicMaterial({color:0x37a6ff})); group.add(this.trailLine);
+          setCam(0,22,11, 0,0,0); this._sync();
+        },
+        _sync(){ const p=this.r.pose(); const x=p[0], z=p[1], h=p[2];
+          this.pivot.position.set(x,0.55,z); this.pivot.rotation.y=h;
+          // LiDAR taraması (BVH yolu): her ışın [ex,ez,hit]
+          const scan=this.r.lidar_scan(this.lidarN, this.lidarFov, this.lidarRange); let hc=0;
+          for(let i=0;i<this.lidarN;i++){ const ex=scan[i*3], ez=scan[i*3+1], hit=scan[i*3+2], o=i*6;
+            this.lidarPos[o]=x; this.lidarPos[o+1]=0.5; this.lidarPos[o+2]=z;
+            this.lidarPos[o+3]=ex; this.lidarPos[o+4]=0.5; this.lidarPos[o+5]=ez;
+            this.lidarCol[o]=0.10; this.lidarCol[o+1]=0.20; this.lidarCol[o+2]=0.30;
+            if(hit>0.5){ this.lidarCol[o+3]=0.30; this.lidarCol[o+4]=0.88; this.lidarCol[o+5]=1.0;
+              this.lidarHitPos[hc*3]=ex; this.lidarHitPos[hc*3+1]=0.5; this.lidarHitPos[hc*3+2]=ez; hc++; }
+            else { this.lidarCol[o+3]=0.16; this.lidarCol[o+4]=0.24; this.lidarCol[o+5]=0.38; } }
+          this.lidarLines.geometry.attributes.position.needsUpdate=true; this.lidarLines.geometry.attributes.color.needsUpdate=true;
+          this.lidarHitGeo.setDrawRange(0,hc); this.lidarHitGeo.attributes.position.needsUpdate=true;
+          const hits=this.r.sensor_hits();
+          for(let i=0;i<this.rays.length;i++){ const a=this.rays[i].geometry.attributes.position.array;
+            a[0]=x; a[1]=0.55; a[2]=z; a[3]=hits[i*2]!==undefined?hits[i*2]:x; a[4]=0.55; a[5]=hits[i*2+1]!==undefined?hits[i*2+1]:z;
+            this.rays[i].geometry.attributes.position.needsUpdate=true; }
+          this.trail.push(x,0.12,z); if(this.trail.length>this.trailMax*3) this.trail.splice(0,3);
+          this.trailPos.set(this.trail); this.trailGeo.setDrawRange(0,this.trail.length/3); this.trailGeo.attributes.position.needsUpdate=true;
+        },
+        update(){ if(!this.r.reached()) this.r.step(1/60); this._sync(); return this.r.state_hash(); },
+        dispose(){ this.r?.free?.(); this.r=null; } },
+
+      { id:'fluid', name:'PBF Akışkan', tag:'3B',
+        desc:'Position-Based Fluids — sabit-noktada deterministik parçacık suyu. Renk = hız (derin mavi durgun → camgöbeği/köpük hareketli). Musluktan su ekle, akışkanlığı su↔bal arasında kaydır — her etkileşim de deterministiktir: aynı kare + aynı girdi → aynı hash.',
+        init(){ const MAX=800; this.MAX=MAX;
+          // Konteyner: tel çerçeve + hafif saydam duvarlar (derinlik hissi)
+          this.box=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(6,7,6)), new THREE.LineBasicMaterial({color:0x3a4660})); this.box.position.set(3,3.5,3); group.add(this.box);
+          const wall=new THREE.Mesh(new THREE.BoxGeometry(6,7,6), new THREE.MeshStandardMaterial({color:0x1a2333, transparent:true, opacity:0.10, side:THREE.BackSide, depthWrite:false})); wall.position.set(3,3.5,3); group.add(wall);
+          this.f=new WasmFluid3(1.0,0,-10,0, 0,0,0, 6,7,6);
+          for(let ix=0;ix<8;ix++)for(let iy=0;iy<9;iy++)for(let iz=0;iz<6;iz++) this.f.add_particle(1.0+ix*0.4, 3.2+iy*0.4, 1.5+iz*0.45);
+          this.dummy=new THREE.Object3D(); this._c=new THREE.Color();
+          this.mesh=new THREE.InstancedMesh(new THREE.SphereGeometry(0.22,10,8), new THREE.MeshStandardMaterial({roughness:0.25, metalness:0.1}), MAX);
+          this.mesh.count=this.f.count(); group.add(this.mesh);
+          this.prev=null; this.pour=0; this.pourI=0; this.frame=0;
+          // ── Etkileşim paneli ──
+          const ui=document.getElementById('demo-ui');
+          ui.innerHTML=`<div class="dpanel">
+            <div class="drow"><button class="prim" id="fl-pour">💧 Su ekle (+90)</button>
+              <span class="lbl" id="fl-n"></span></div>
+            <div class="drow"><span class="lbl">Akışkanlık</span>
+              <input type="range" id="fl-visc" min="0" max="100" value="6">
+              <span class="lbl" id="fl-vlbl">su</span></div>
+            <div class="drow"><span class="proof" id="fl-proof">Sıfırla → aynı evrim, aynı hash.</span></div></div>`;
+          document.getElementById('fl-pour').onclick=()=>{ if(this.f.count()<MAX) this.pour=30; };
+          document.getElementById('fl-visc').oninput=(e)=>{ const t=e.target.value/100;
+            this.f.set_viscosity(t*0.45, t*0.06);
+            document.getElementById('fl-vlbl').textContent = t<0.15?'su':t<0.45?'yağ':t<0.8?'şurup':'bal'; };
+          setCam(11,7,11, 3,2.2,3); this._sync();
+        },
+        _sync(){ const n=this.f.count(); const p=this.f.positions(); this.mesh.count=n;
+          for(let i=0;i<n;i++){
+            const x=p[i*3],y=p[i*3+1],z=p[i*3+2];
+            this.dummy.position.set(x,y,z); this.dummy.updateMatrix(); this.mesh.setMatrixAt(i,this.dummy.matrix);
+            // Hız-rengi: pozisyon deltasından (yalnız GÖRSEL — fizik/hash'e dokunmaz)
+            let v=0; if(this.prev && i*3+2<this.prev.length){ const dx=x-this.prev[i*3],dy=y-this.prev[i*3+1],dz=z-this.prev[i*3+2]; v=Math.sqrt(dx*dx+dy*dy+dz*dz)*60; }
+            const t=Math.min(1, v/6);
+            this._c.setRGB(0.08+0.55*t, 0.38+0.5*t, 0.85+0.15*t);
+            this.mesh.setColorAt(i,this._c);
+          }
+          this.mesh.instanceMatrix.needsUpdate=true; if(this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate=true;
+          this.prev=p;
+          const el=document.getElementById('fl-n'); if(el) el.textContent=`${n} / ${this.MAX} parçacık`;
+        },
+        update(){
+          // Musluk: kare-sayacına bağlı altın-açı spirali → rastgelesiz, deterministik döküş
+          if(this.pour>0 && this.f.count()<this.MAX){
+            for(let k=0;k<3 && this.f.count()<this.MAX;k++){
+              const a=this.pourI*2.399963, r=0.35+0.10*((this.pourI%3));
+              this.f.add_particle(3+Math.cos(a)*r, 6.55, 3+Math.sin(a)*r); this.pourI++;
+            }
+            this.pour--;
+          }
+          this.f.step(1/60); this.frame++; this._sync(); return this.f.state_hash();
+        },
+        dispose(){ this.f?.free(); this.f=null; this.prev=null; } },
+
+      { id:'granular', name:'Granüler (Kum Dökümü)', tag:'Det',
+        desc:'Deterministik DEM: musluktan dökülen kum tabanda DOĞAL YIĞIN AÇISIYLA koni kurar; renk bantları katmanlaşmayı (stratigrafi) gösterir. Sürtünmeyi değiştir → koni açısı değişir (kaygan=basık, pütürlü=dik). Hiç rastgelelik yok: aynı sürtünme + aynı döküş = her platformda BİT-AYNI yığın ve hash. İlaç tableti sıkıştırma, silo/madencilik, toz-yatak 3B baskı için deterministik temel.',
+        init(mu){ const B=2.4; this.B=B; this.mu=(mu ?? this.mu ?? 0.6); const CAP=1500; this.CAP=CAP;
+          this.box=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(B,B,B)), new THREE.LineBasicMaterial({color:0x3a4660})); this.box.position.set(B/2,B/2,B/2); group.add(this.box);
+          const fl=new THREE.Mesh(new THREE.PlaneGeometry(B,B), new THREE.MeshStandardMaterial({color:0x171c26})); fl.rotation.x=-Math.PI/2; fl.position.set(B/2,0,B/2); group.add(fl);
+          // Musluk ağzı (görsel işaret)
+          const spout=new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.16,0.22,12), mat(0x3a4660)); spout.position.set(B/2,B-0.10,B/2); group.add(spout);
+          const r=0.055; this.r=r;
+          // new(box, radius, gravity, k_n, c_n, mu, cohesion, mass, wall_c)
+          // c_n≈kritik sönüm + wall sönümü → sıçrama yok; mu = yığın açısının kaynağı
+          this.g=new WasmGrainWorld(B,B,B, r, -9.5, 600, 5.5, this.mu, 0, 0.03, 8.0);
+          this.pourI=0; this.pouring=true;
+          this.dummy=new THREE.Object3D(); this._c=new THREE.Color();
+          this.mesh=new THREE.InstancedMesh(new THREE.SphereGeometry(r,6,5), new THREE.MeshStandardMaterial({roughness:0.85,metalness:0.03}), CAP);
+          this.mesh.count=0; group.add(this.mesh);
+          // ── Etkileşim paneli: döküş + sürtünme ön-ayarları ──
+          const ui=document.getElementById('demo-ui');
+          ui.innerHTML=`<div class="dpanel">
+            <div class="drow"><button class="prim" id="gr-pour">⏸ Döküşü durdur</button>
+              <span class="lbl" id="gr-n"></span></div>
+            <div class="drow"><span class="lbl">Sürtünme (yığın açısı):</span></div>
+            <div class="drow">
+              <button id="gr-mu0">Kaygan μ=0.15</button>
+              <button id="gr-mu1">Kum μ=0.6</button>
+              <button id="gr-mu2">Pütürlü μ=1.1</button></div>
+            <div class="drow"><span class="proof" id="gr-proof"></span></div></div>`;
+          document.getElementById('gr-pour').onclick=(e)=>{ this.pouring=!this.pouring; e.target.textContent=this.pouring?'⏸ Döküşü durdur':'▶ Döküşe devam'; };
+          const rebuild=(m)=>{ select(cur, m); };   // aynı demoyu yeni mu ile yeniden kur
+          document.getElementById('gr-mu0').onclick=()=>rebuild(0.15);
+          document.getElementById('gr-mu1').onclick=()=>rebuild(0.6);
+          document.getElementById('gr-mu2').onclick=()=>rebuild(1.1);
+          this._proof();
+          setCam(B*2.0, B*1.55, B*2.1, B/2, B*0.22, B/2); this._sync();
+        },
+        _proof(){ const el=document.getElementById('gr-proof');
+          if(el) el.textContent=`μ=${this.mu} · aynı μ + aynı döküş → bit-aynı yığın`; },
+        // Kum bantları: her 250 tanede bir ton değişir → koni kesitinde katmanlar görünür
+        _tone(i){ const band=(i/250|0)%3;
+          return band===0?[0.62,0.50,0.34]: band===1?[0.48,0.37,0.26]:[0.72,0.62,0.44]; },
+        _sync(){ const n=this.g.count(); const p=this.g.positions(); const s=this.g.speeds(); this.mesh.count=n;
+          for(let i=0;i<n;i++){ this.dummy.position.set(p[i*3],p[i*3+1],p[i*3+2]); this.dummy.updateMatrix(); this.mesh.setMatrixAt(i,this.dummy.matrix);
+            const t=Math.min(1, s[i]/3), c=this._tone(i);
+            this._c.setRGB(c[0]+0.3*t, c[1]+0.25*t, c[2]+0.2*t); this.mesh.setColorAt(i,this._c); }
+          this.mesh.instanceMatrix.needsUpdate=true; if(this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate=true;
+          const el=document.getElementById('gr-n'); if(el) el.textContent=`${n} / ${this.CAP} tane`; },
+        update(){
+          // Musluk: altın-açı mikro-ofset (rastgelesiz) + hafif aşağı hız → doğal koni.
+          // Kare-sayacına bağlı → determinist; döküş duraklatılırsa sayaç da durur.
+          if(this.pouring && this.g.count()<this.CAP){
+            const B=this.B;
+            for(let k=0;k<3 && this.g.count()<this.CAP;k++){
+              const a=this.pourI*2.399963, rr=0.02+0.07*((this.pourI%5)/4);
+              this.g.add_grain_v(B/2+Math.cos(a)*rr, B-0.22, B/2+Math.sin(a)*rr, 0,-1.2,0);
+              this.pourI++;
+            }
+          }
+          // küçük alt-adım (dt=1/300 ≪ kararlılık sınırı) → yay çınlaması/patlama yok
+          for(let s2=0;s2<5;s2++) this.g.step(1/300);
+          this._sync(); return this.g.state_hash();
+        },
+        dispose(){ this.g?.free?.(); this.g=null; } },
+
+      { id:'rigid', name:'Rijit İstif', tag:'3B',
+        desc:'Kutu ve küre yığınları yerçekimiyle düşüp oturur — TGS-Soft çözücü, çoklu-temas, sürtünme.',
+        init(){ this.w=new WasmWorld3(0,-10,0); this.b=[]; const g=this.w.add_box(0,0,-0.5,0, 8,0.5,8,1); this.b.push({id:g,obj:ground(8)}); group.add(this.b[0].obj);
+          for(let l=0;l<5;l++)for(let i=0;i<4;i++){ const x=(i-1.5)*1.25+(l%2?0.25:0); const id=this.w.add_box(1,x,0.6+l*1.04,0,0.5,0.5,0.5,1); const o=boxMesh(0.5,0.5,0.5,PAL[i]); group.add(o); this.b.push({id,obj:o}); }
+          for(let i=0;i<5;i++){ const id=this.w.add_sphere(1,(i-2)*1.0,7+i*0.9,0,0.35,1); const o=sphMesh(0.35,0x8fd6ff); group.add(o); this.b.push({id,obj:o}); }
+          setCam(11,7,12, 0,2,0); sync(this.w,this.b);
+        },
+        update(){ this.w.step(1/60); sync(this.w,this.b); return this.w.state_hash(); },
+        dispose(){ this.w?.free(); this.w=null; } },
+
+      { id:'ccd', name:'CCD: Hız Sınırı Yok', tag:'Det',
+        desc:'İnce duvara (0.24 kalınlık) mermi yağmuru. Hızı kaydırıcıyla 35→600 birim/s\'ye çıkar — kare başına 10 birim yol demek — mermi yine de İÇİNDEN GEÇEMEZ: hız-genişletilmiş genişfaz + CCD (conservative advancement) her hızda yakalar. Sayaç canlı kanıttır: geçen mermi HEP 0. Atış deseni sayaç-tabanlı (rastgele yok) → aynı etkileşim dizisi = bit-aynı hash. (Bu davranış native testle de sabitlendi: v=800\'de dahi tünelleme yok.)',
+        init(){ this.w=new WasmWorld3(0,0,0); this.b=[]; this.t=0; this.n=0; this.CAPB=24; this.ids=[]; this.speed=120;
+          const id=this.w.add_box(0, 0,0,0, 0.12,2.8,2.8,1); const o=boxMesh(0.12,2.8,2.8,0x6a4a4a); group.add(o); this.b.push({id,obj:o});
+          const ui=document.getElementById('demo-ui');
+          ui.innerHTML=`<div class="dpanel">
+            <div class="drow"><span class="lbl">Mermi hızı</span>
+              <input type="range" id="ccd-v" min="35" max="600" step="5" value="120">
+              <span class="lbl mono" id="ccd-vl">120 b/s</span></div>
+            <div class="drow"><button class="prim" id="ccd-burst">🔫 3'lü atış</button>
+              <span class="lbl" id="ccd-n"></span></div>
+            <div class="drow"><span class="proof" id="ccd-proof"></span></div></div>`;
+          document.getElementById('ccd-v').oninput=(e)=>{ this.speed=+e.target.value;
+            document.getElementById('ccd-vl').textContent=`${this.speed} b/s`; };
+          document.getElementById('ccd-burst').onclick=()=>{ for(let k=0;k<3;k++) this._fire(); };
+          setCam(2,4.5,14, 0,0,0); sync(this.w,this.b);
+        },
+        // Sayaç-tabanlı atış deseni (y,z deterministik dizi) — Math.random YOK.
+        _fire(){ if(this.n>=this.CAPB) return; const i=this.n++;
+          const y=((i*3)%5-2)*0.95, z=((i*7)%5-2)*0.95;
+          const id=this.w.add_box(1,-9,y,z, 0.24,0.24,0.24,1);
+          this.w.set_ccd(id,true); this.w.set_linvel(id,this.speed,0,0);
+          const hot=Math.min(1,(this.speed-35)/565);          // hız arttıkça kızıllaşır
+          const c=new THREE.Color(0.35+0.65*hot, 0.75-0.45*hot, 1.0-0.75*hot);
+          const o=boxMesh(0.24,0.24,0.24,c.getHex()); group.add(o); this.b.push({id,obj:o}); this.ids.push(id);
+        },
+        update(){
+          if(this.t%45===0 && this.n<this.CAPB) this._fire();  // otomatik atış da sayaç-tabanlı
+          this.t++; this.w.step(1/60); sync(this.w,this.b);
+          // Canlı kanıt: duvarın (x=0) ötesine geçen mermi sayısı — HEP 0 kalmalı
+          const tr=this.w.transforms(); let pass=0;
+          for(const id of this.ids) if(tr[id*7]>0.5) pass++;
+          const p=document.getElementById('ccd-proof');
+          if(p) p.innerHTML = pass===0
+            ? `duvarı geçen: <span class="ok">0 / ${this.n}</span> — tünelleme yok`
+            : `duvarı geçen: <span class="warn">${pass} / ${this.n}</span>`;
+          const nn=document.getElementById('ccd-n'); if(nn) nn.textContent=`${this.n} / ${this.CAPB} mermi`;
+          return this.w.state_hash();
+        },
+        dispose(){ this.w?.free(); this.w=null; } },
+
+      { id:'compound', name:'Bileşik Şekiller', tag:'3B',
+        desc:'Çok-primitif rijit gövdeler: kütle/atalet ANALİTİK, çarpışma PARÇA-PARÇA (bounding-box değil). Kanıtı gör: masanın altı GERÇEKTEN boş — yağan toplar tablaya çarpar ama ayakların ARASINDAN da geçer. Dambıl gerçek atalet tensörüyle yuvarlanır. 🔨 Çekiç fırlat: ağır başlı bileşik cisim, gerçek kütle merkezi etrafında takla atarak masayı devirir.',
+        init(){ this.w=new WasmWorld3(0,-10,0); this.b=[]; this.t=0; this.balls=0; this.rain=true; this.BALLCAP=14;
+          const g=this.w.add_box(0,0,-0.5,0,8,0.5,8,1); this.b.push({id:g,obj:ground(8)}); group.add(this.b[0].obj);
+          // Dambıl: iki baş + FİZİKSEL çubuk (görsel-fizik birebir; gerçek COM/atalet)
+          const dumb=[-1,0,0,0.5,0.5,0.5, 1,0,0,0.5,0.5,0.5, 0,0,0,0.85,0.15,0.15];
+          const did=this.w.add_compound_boxes(new Float32Array(dumb),-2.6,3,0,1);
+          const dg=new THREE.Group(); let m;
+          m=boxMesh(0.5,0.5,0.5,PAL[0]); m.position.x=-1; dg.add(m);
+          m=boxMesh(0.5,0.5,0.5,PAL[0]); m.position.x=1; dg.add(m);
+          m=boxMesh(0.85,0.15,0.15,0x99a); dg.add(m); group.add(dg); this.b.push({id:did,obj:dg});
+          // Masa: tabla + 4 ayak — altı boş bileşik gövde
+          const legs=[[-0.8,-0.1,-0.8],[0.8,-0.1,-0.8],[-0.8,-0.1,0.8],[0.8,-0.1,0.8]];
+          let tp=[0,0.7,0,1,0.12,1]; legs.forEach(L=>tp.push(L[0],L[1],L[2],0.12,0.5,0.12));
+          const tid=this.w.add_compound_boxes(new Float32Array(tp),2.4,3.2,0,1);
+          const tg=new THREE.Group(); m=boxMesh(1,0.12,1,PAL[3]); m.position.y=0.7; tg.add(m);
+          legs.forEach(L=>{ const lm=boxMesh(0.12,0.5,0.12,PAL[3]); lm.position.set(L[0],-0.1,L[2]); tg.add(lm); });
+          group.add(tg); this.b.push({id:tid,obj:tg});
+          // ── Panel: top yağmuru + çekiç ──
+          const ui=document.getElementById('demo-ui');
+          ui.innerHTML=`<div class="dpanel">
+            <div class="drow"><button class="prim" id="cp-hammer">🔨 Çekiç fırlat</button>
+              <button id="cp-rain">⏸ Top yağmurunu durdur</button></div>
+            <div class="drow"><span class="proof" id="cp-note">Toplar sayaç-tabanlı yağar (rastgele yok) → bit-aynı.</span></div></div>`;
+          document.getElementById('cp-hammer').onclick=()=>this._hammer();
+          document.getElementById('cp-rain').onclick=(e)=>{ this.rain=!this.rain; e.target.textContent=this.rain?'⏸ Top yağmurunu durdur':'▶ Top yağmuru'; };
+          setCam(9,6,11, 0,1.5,0); sync(this.w,this.b);
+        },
+        // Çekiç: ince sap + ağır geniş baş → COM başa yakın; çarpınca gerçek
+        // atalet tensörüyle takla atar (tek-kutu yaklaşımı bunu YAPAMAZ).
+        _hammer(){
+          const parts=[0,0,0, 0.13,0.65,0.13,  0,0.72,0, 0.5,0.2,0.2];
+          const id=this.w.add_compound_boxes(new Float32Array(parts), -7, 2.2, 0, 3);
+          this.w.set_linvel(id, 10, 4, 0);
+          const hg=new THREE.Group();
+          let m=boxMesh(0.13,0.65,0.13,0x8d6e4a); hg.add(m);
+          m=boxMesh(0.5,0.2,0.2,0xb0b6c4); m.position.y=0.72; hg.add(m);
+          group.add(hg); this.b.push({id,obj:hg});
+        },
+        update(){
+          // Deterministik top yağmuru: sayaç-desenli konum, masa bölgesine (kimi
+          // tablaya çarpar, kimi ayakların ARASINDAN yere düşer → parça-parça çarpışma kanıtı)
+          if(this.rain && this.t%40===0 && this.balls<this.BALLCAP){
+            const i=this.balls; const x=2.4+((i*2)%5-2)*0.55, z=((i*3)%5-2)*0.55;
+            const id=this.w.add_sphere(1, x, 6.5, z, 0.2, 1);
+            const o=sphMesh(0.2,PAL[(i+2)%PAL.length]); group.add(o); this.b.push({id,obj:o});
+            this.balls++;
+          }
+          this.t++; this.w.step(1/60); sync(this.w,this.b); return this.w.state_hash();
+        },
+        dispose(){ this.w?.free(); this.w=null; } },
+
+      { id:'buoyancy', name:'Batmazlık', tag:'3B',
+        desc:'Archimedes kaldırma + doğrultucu tork + su sürtünmesi. Kutular alçaktan bırakılır; su onları YAKALAR (yüksek sürtünme) — trambolin gibi zıplamaz, kısa salınımla y=0 yüzeyine oturur. Yüzeyde animasyonlu dalga/halka.',
+        // lin/ang drag yüksek (4.5/3.0) → suya giriş hızını hızla söndürür; düşük bırakma yüksekliği → yumuşak giriş.
+        init(){ this.w=new WasmWorld3(0,-10,0); this.w.set_water(true,0,1,4.5,3.0); this.b=[]; this.t=0;
+          this.water=wavyWater(0,16,40); group.add(this.water);
+          for(let i=0;i<8;i++){ const x=(i%4-1.5)*1.7, z=(i<4?-1.4:1.4); const id=this.w.add_box(1,x,1.4+(i%3)*0.4,z, 0.7,0.45,0.7, 0.4); const o=boxMesh(0.7,0.45,0.7,PAL[i%PAL.length]); group.add(o); this.b.push({id,obj:o}); }
+          setCam(0,7,13, 0,0,0); sync(this.w,this.b);
+        },
+        update(){ this.w.step(1/60); this.t+=1/60; sync(this.w,this.b); animateWater(this.water,this.t,this.b); return this.w.state_hash(); },
+        dispose(){ this.w?.free(); this.w=null; } },
+
+      { id:'terrain', name:'Heightfield Terrain', tag:'3B',
+        desc:'Kompakt yükseklik-ızgarası terrain (on-the-fly hücre-üçgenleri). Toplar tümseklerden yuvarlanıp çukurlara oturur.',
+        init(){ this.w=new WasmWorld3(0,-10,0); this.b=[]; const rows=16,cols=16,cell=1.3,ox=-9.75,oy=0,oz=-9.75;
+          const H=[]; for(let r=0;r<rows;r++)for(let c=0;c<cols;c++) H.push(Math.sin(c*0.55)*0.9 + Math.cos(r*0.5)*0.9 + Math.sin((r+c)*0.3)*0.4 + 1.2);
+          const hf=new Float32Array(H); this.w.add_heightfield(rows,cols,cell,ox,oy,oz,hf); group.add(terrainMesh(rows,cols,cell,ox,oy,oz,H));
+          for(let i=0;i<10;i++){ const id=this.w.add_sphere(1,(i%5-2)*1.6, 8+i*0.5, (i<5?-2:2), 0.45, 1); const o=sphMesh(0.45,PAL[i%PAL.length]); group.add(o); this.b.push({id,obj:o}); }
+          setCam(0,12,16, 0,2,0); sync(this.w,this.b);
+        },
+        update(){ this.w.step(1/60); sync(this.w,this.b); return this.w.state_hash(); },
+        dispose(){ this.w?.free(); this.w=null; } },
+
+      { id:'cloth', name:'Kumaş (XPBD)', tag:'3B',
+        desc:'Deterministik XPBD kumaş — üst kenar sabit, bir kutunun üstüne dökülür. Yüksek çözünürlük (28×28) ince kıvrımlar verir; çarpışma kutusu görsel küpten biraz büyük tutulur → kumaş içine geçmez.',
+        init(){ const cols=28,rows=28,sp=0.23; this.cl=new WasmCloth(cols,rows,sp, -3.2,5.2,-3.2, 1,0.0, 0,-10,0);
+          // Çarpışma kutusu (yarı 1.2) GÖRSEL küpten (yarı 0.95) BÜYÜK → kumaş ~0.25 dışarıda kalır, geçme olmaz.
+          this.cl.add_box_collider(0,2.0,0, 1.2,1.2,1.2); this.cl.add_ground(0);
+          const boxo=boxMesh(0.95,0.95,0.95,0x44506a); boxo.position.set(0,2.0,0); group.add(boxo);
+          this.geo=clothGeom(cols,rows); this.mesh=new THREE.Mesh(this.geo, new THREE.MeshStandardMaterial({color:0xff5fa2, side:THREE.DoubleSide, roughness:0.85, metalness:0.0})); group.add(this.mesh);
+          setCam(7.5,5.5,8.5, 0,2,0.5); this._sync();
+        },
+        _sync(){ const p=this.cl.positions(); this.geo.attributes.position.array.set(p); this.geo.attributes.position.needsUpdate=true; this.geo.computeVertexNormals(); },
+        update(){ this.cl.step(1/60); this._sync(); return ''; },
+        dispose(){ this.cl?.free?.(); this.cl=null; } },
+    ];
+
+    // ---- Galeri UI ----
+    let cur=0, paused=false, active=null;
+    const listEl=document.getElementById('list'), titleEl=document.getElementById('title'), descEl=document.getElementById('desc'), hashEl=document.getElementById('hash');
+    demos.forEach((d,i)=>{ const el=document.createElement('div'); el.className='item'; el.innerHTML=`<span class="dot"></span><span>${d.name}</span><span class="tag">${d.tag||'3B'}</span>`; el.onclick=()=>select(i); listEl.appendChild(el); });
+    function clearGroup(){ if(active?.dispose) active.dispose(); scene.remove(group); group.traverse(o=>{ o.geometry?.dispose?.(); if(o.material){ Array.isArray(o.material)?o.material.forEach(m=>m.dispose()):o.material.dispose(); } }); group=new THREE.Group(); scene.add(group); }
+    // İkinci parametre (arg) demonun init'ine iletilir — ör. granüler demo sürtünme
+    // ön-ayarıyla kendini yeniden kurar: select(cur, 0.15). Diğer demolar yok sayar.
+    function select(i, arg){ cur=(i+demos.length)%demos.length; const d=demos[cur]; [...listEl.children].forEach((el,j)=>el.classList.toggle('active',j===cur)); titleEl.textContent=d.name; descEl.textContent=d.desc||''; clearGroup(); document.getElementById('demo-ui').innerHTML=''; active=d; try{ d.init(arg); }catch(e){ console.error(e); } }
+    document.getElementById('prev').onclick=()=>select(cur-1);
+    document.getElementById('next').onclick=()=>select(cur+1);
+    document.getElementById('reset').onclick=()=>select(cur);
+    document.getElementById('pause').onclick=(e)=>{ paused=!paused; e.target.textContent=paused?'Sürdür':'Duraklat'; };
+    window.addEventListener('keydown',e=>{ if(e.key==='ArrowLeft')select(cur-1); if(e.key==='ArrowRight')select(cur+1); });
+
+    // ── Kiosk / sunum modu: ?kiosk=SANIYE → demolar otomatik döner (fuar standı,
+    // resepsiyon ekranı, loop video kaydı). Örn: demos.html?kiosk=8 → 8 sn'de bir
+    // sonraki demo. Kenar çubuğu/oklar/butonlar gizlenir, imleç kaybolur; select
+    // modulo ile başa sardığından sonsuz döngü kendiliğindendir.
+    const kioskSec = parseFloat(new URLSearchParams(location.search).get('kiosk'));
+    if (kioskSec > 0) {
+      document.body.classList.add('kiosk');
+      setInterval(() => select(cur + 1), Math.max(3, kioskSec) * 1000);
+    }
+
+    function loop(){ requestAnimationFrame(loop); controls.update(); if(active && !paused){ const h=active.update(1/60); if(h) hashEl.textContent='0x'+h; } renderer.render(scene,camera); }
+    async function main(){ await init(); resize(); const q=new URLSearchParams(location.search).get('demo'); const idx=demos.findIndex(d=>d.id===q); select(idx>=0?idx:0); loop(); }
+    main();
+  </script>
+</body>
+</html>

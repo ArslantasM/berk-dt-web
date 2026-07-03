@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Determinism Wall — Berk Digital Twin</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #07090d; color: #e8edf2;
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  #hud { position: fixed; top: 14px; left: 14px; z-index: 10; padding: 14px 16px;
+    background: rgba(12,16,22,.82); border: 1px solid #1d2733; border-radius: 12px;
+    backdrop-filter: blur(6px); min-width: 290px; }
+  #hud h1 { margin: 0 0 8px; font-size: 14px; letter-spacing: .04em; color: #9fb3c8; font-weight: 600; }
+  .row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; margin: 3px 0; }
+  .row .k { color: #7d93a8; }
+  .row .v { font-variant-numeric: tabular-nums; }
+  #hash { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 20px;
+    letter-spacing: .06em; color: #5ad1a0; margin: 10px 0 4px; word-break: break-all; }
+  #badge { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; letter-spacing: .03em; }
+  .ok   { background: #0e3a2a; color: #54e0a6; border: 1px solid #1c6b4d; }
+  .warn { background: #3a2a0e; color: #e0b454; border: 1px solid #6b541c; }
+  .bad  { background: #3a0e16; color: #e06474; border: 1px solid #6b1c2a; }
+  #chaos { margin-top: 10px; font-size: 12px; color: #7d93a8; }
+  #chaos.fire { color: #ff7a59; font-weight: 700; }
+  #note { position: fixed; bottom: 12px; left: 14px; z-index: 10; font-size: 11px; color: #5a6b7d; }
+  #controls { position: fixed; top: 14px; right: 14px; z-index: 10; }
+  button { background: #15202b; color: #cfe0ee; border: 1px solid #28384a; border-radius: 8px;
+    padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #1c2a37; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <h1>DETERMINISM WALL · WASM</h1>
+  <div class="row"><span class="k">scenario</span><span class="v" id="name">—</span></div>
+  <div class="row"><span class="k">frame</span><span class="v" id="frame">0 / 0</span></div>
+  <div class="row"><span class="k">bodies</span><span class="v" id="bodies">0</span></div>
+  <div class="row"><span class="k">sim_version</span><span class="v" id="simv">—</span></div>
+  <div class="k" style="margin-top:10px">state_hash</div>
+  <div id="hash">————————————————</div>
+  <span id="badge" class="warn">no golden</span>
+  <div id="chaos">chaos event @ frame 90</div>
+</div>
+<div id="controls"><button id="replay">↻ Replay</button></div>
+<div id="note">Same manifest + same fixed step → identical state_hash in Unity / Unreal / WASM.</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import init, { WasmScenario, sim_version } from '../pkg/berk_dt_wasm.js';
+
+const DT = 1 / 60;                 // fixed physics step (s) — matches manifest dt_ns
+const MAX_INSTANCES = 800;         // upper bound on dynamic bodies
+const CUBE = 0.5;                  // dynamic body size (half 0.25 → 0.5)
+
+// --- Three.js scene ---------------------------------------------------------
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07090d);
+scene.fog = new THREE.Fog(0x07090d, 30, 90);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(9, 7, 14);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2, 0);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0x9fc0ff, 0x202830, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(8, 16, 6);
+scene.add(sun);
+
+// Ground (static box top is at y=1) — rendered as its own plane.
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(100, 100),
+  new THREE.MeshStandardMaterial({ color: 0x141b24, roughness: 0.95, metalness: 0.0 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = 1;
+scene.add(ground);
+scene.add(new THREE.GridHelper(100, 100, 0x1c2733, 0x121a22));
+
+// Dynamic bodies → one InstancedMesh of 0.5 cubes.
+const cubeGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
+const cubeMat = new THREE.MeshStandardMaterial({ color: 0x4aa3ff, roughness: 0.45, metalness: 0.1 });
+const cubes = new THREE.InstancedMesh(cubeGeo, cubeMat, MAX_INSTANCES);
+cubes.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+cubes.count = 0;
+scene.add(cubes);
+
+const dummy = new THREE.Object3D();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// --- Scenario load & run ----------------------------------------------------
+const ui = {
+  name: document.getElementById('name'), frame: document.getElementById('frame'),
+  bodies: document.getElementById('bodies'), simv: document.getElementById('simv'),
+  hash: document.getElementById('hash'), badge: document.getElementById('badge'),
+  chaos: document.getElementById('chaos'),
+};
+
+let scn = null, acc = 0, last = 0, manifestText = '', loggedFinal = false;
+
+async function loadScenario() {
+  if (!manifestText) manifestText = await (await fetch('./scenarios/determinism_wall.json')).text();
+  scn = WasmScenario.fromJson(manifestText);
+  acc = 0; last = performance.now(); loggedFinal = false;
+  ui.name.textContent = scn.name();
+  ui.simv.textContent = sim_version();
+  cubes.count = 0;
+}
+
+function setBadge(golden, current, done) {
+  const b = ui.badge;
+  if (!golden) { b.className = 'warn'; b.textContent = done ? 'final: ' + current.slice(0, 8) + '…' : 'no golden'; return; }
+  if (current === golden) { b.className = 'ok'; b.textContent = '✓ matches golden'; }
+  else { b.className = 'bad'; b.textContent = '✗ DIVERGENCE'; }
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (!scn) return;
+  const realDelta = Math.min((now - last) / 1000, 0.1); // clamp tab-switch spikes
+  last = now;
+  acc += realDelta;
+  while (acc >= DT && !scn.is_done()) { scn.step(); acc -= DT; }
+  const alpha = scn.is_done() ? 1 : acc / DT;
+
+  // Render transforms (interpolated): [px,py,pz, qx,qy,qz,qw] per body; index 0 = ground (skip).
+  const t = scn.render_transforms(alpha);
+  const n = scn.body_count();
+  let inst = 0;
+  for (let i = 1; i < n && inst < MAX_INSTANCES; i++) {
+    const o = i * 7;
+    dummy.position.set(t[o], t[o + 1], t[o + 2]);
+    dummy.quaternion.set(t[o + 3], t[o + 4], t[o + 5], t[o + 6]);
+    dummy.updateMatrix();
+    cubes.setMatrixAt(inst++, dummy.matrix);
+  }
+  cubes.count = inst;
+  cubes.instanceMatrix.needsUpdate = true;
+
+  // HUD
+  const f = scn.frame(), tot = scn.total_frames();
+  ui.frame.textContent = f + ' / ' + tot;
+  ui.bodies.textContent = n;
+  const h = scn.state_hash();
+  ui.hash.textContent = h;
+  setBadge(scn.golden_hash(), h, scn.is_done());
+  ui.chaos.classList.toggle('fire', f >= 88 && f <= 110);
+  if (scn.is_done() && !loggedFinal) {
+    loggedFinal = true;
+    console.log('[Determinism Wall] final state_hash @ frame ' + f + ' = ' + h +
+      '\n  → paste into scenarios/determinism_wall.json "golden_hash" to lock cross-engine parity.');
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+document.getElementById('replay').addEventListener('click', loadScenario);
+
+await init();
+await loadScenario();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

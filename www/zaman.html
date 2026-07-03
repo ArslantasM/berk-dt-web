@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zaman Yolcusu — Geleceği Mühürle · Berk Digital Twin</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#161a22; --line:#262c38; --fg:#e6e6e6; --muted:#8b94a6; --accent:#5cc8ff; --ok:#3fb950; --bad:#ff5f6b; --gold:#ffd166; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; height:100%; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); overflow: hidden; }
+    #stage { position: fixed; inset: 0; }
+    #topbar { position: absolute; top:0; left:0; right:0; padding: 16px 22px; z-index:5; pointer-events:none;
+      background: linear-gradient(#0f1115ee, transparent); }
+    #topbar h1 { margin:0; font-size:1.15rem; }
+    #topbar h1 a { color: var(--muted); text-decoration:none; font-weight:400; font-size:.85rem; margin-left:10px; }
+    #topbar p { margin:4px 0 0; color: var(--muted); font-size:.86rem; max-width:820px; }
+    .mono { font-family: ui-monospace, Consolas, monospace; }
+
+    /* Mühür kartı */
+    #seal { position:absolute; top:86px; right:16px; width:330px; z-index:6;
+      background:#161a22ee; border:1px solid var(--line); border-radius:12px; padding:14px 16px; backdrop-filter: blur(4px); }
+    #seal .cap { font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); }
+    #seal .hash { font-size:.95rem; margin-top:6px; word-break:break-all; color:var(--gold); }
+    #seal .note { font-size:.76rem; color:var(--muted); margin-top:8px; line-height:1.45; }
+    #seal .wax { float:right; width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #ffde8a, #b8860b);
+      box-shadow:0 0 14px #ffd16655; display:flex; align-items:center; justify-content:center; font-size:15px; }
+
+    /* İlerleme + canlı hash */
+    #hud { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); width:min(720px, 92vw); z-index:6; }
+    #bar { height:10px; border-radius:6px; background:#1b2230; border:1px solid var(--line); overflow:hidden; }
+    #fill { height:100%; width:0%; background:linear-gradient(90deg, var(--accent), #7a6cff); transition: width .1s linear; }
+    #hudrow { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:10px; flex-wrap:wrap; }
+    #frame { color:var(--muted); font-size:.85rem; }
+    .btn { background:#161a22cc; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:.9rem; }
+    .btn:hover { background:#20304a; color:var(--accent); }
+    .btn.warn { border-color:#5a3a3a; color:#ffb3b8; }
+    .btn.warn:hover { background:#3a2028; color:var(--bad); }
+
+    /* Sonuç perdesi */
+    #verdict { position:absolute; inset:0; z-index:10; display:none; align-items:center; justify-content:center; background:#0f1115d8; backdrop-filter: blur(3px); }
+    #verdict .card { text-align:center; max-width:680px; padding:34px 40px; border-radius:16px; border:1px solid var(--line); background:#161a22f2; }
+    #verdict h2 { margin:0 0 8px; font-size:2rem; }
+    #verdict.ok h2 { color:var(--ok); } #verdict.bad h2 { color:var(--bad); }
+    #verdict .pair { font-size:.92rem; margin:14px 0; }
+    #verdict .pair div { margin:5px 0; word-break:break-all; }
+    #verdict .lbl { color:var(--muted); font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; }
+    #verdict p.msg { color:var(--muted); font-size:.92rem; line-height:1.55; }
+    #verdict .btn { margin-top:10px; }
+  </style>
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <div id="topbar">
+    <h1>⏳ Zaman Yolcusu — geleceği mühürle <a href="index.html">← ana sayfa</a></h1>
+    <p>Sahne başlamadan önce, aynı dünya perde arkasında <b>600 kare</b> ileri sarıldı ve geleceğin parmak izi
+      <span class="mono">state_hash</span> olarak mühürlendi. Şimdi aynı dünya gözünün önünde gerçek zamanda koşuyor —
+      600. karede canlı hash mühürle karşılaştırılacak. Determinizm = geleceğin önceden bilinebilir olması.</p>
+  </div>
+
+  <div id="seal">
+    <div class="wax">🕯️</div>
+    <div class="cap">Mühür · kare 600 · önceden hesaplandı</div>
+    <div class="hash mono" id="sealHash">hesaplanıyor…</div>
+    <div class="note">Bu değer, sayfa yüklenirken görünmez bir kopyada 600 kare simüle edilerek üretildi
+      ve simülasyon başlamadan sabitlendi.</div>
+  </div>
+
+  <div id="hud">
+    <div id="bar"><div id="fill"></div></div>
+    <div id="hudrow">
+      <span id="frame" class="mono">kare 0 / 600</span>
+      <span>
+        <button class="btn warn" id="nudge">⚡ Dürt (mührü boz)</button>
+        <button class="btn" id="restart">↺ Yeniden başlat</button>
+      </span>
+    </div>
+  </div>
+
+  <div id="verdict">
+    <div class="card">
+      <h2 id="vTitle"></h2>
+      <div class="pair mono">
+        <div><span class="lbl">Mühür (t=0'da yazıldı)&nbsp;</span><br><span id="vSeal"></span></div>
+        <div><span class="lbl">Canlı (kare 600'de ölçüldü)&nbsp;</span><br><span id="vLive"></span></div>
+      </div>
+      <p class="msg" id="vMsg"></p>
+      <button class="btn" id="vAgain">↺ Yeniden başlat</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import init, { WasmWorld3 } from '../pkg/berk_dt_wasm.js';
+
+    const TARGET = 600, DT = 1/60;
+    const PAL = [0x5cc8ff, 0xff7a59, 0x9b8cff, 0x4be0a0, 0xffd166, 0xff5fa2];
+
+    // ── Deterministik sahne kurulumu: her çağrıda BİREBİR aynı dünya ──
+    // (Kurulum parametreleri sabittir; WASM içinde Fx64'e çevrim deterministiktir.)
+    function buildWorld() {
+      const w = new WasmWorld3(0, -10, 0);
+      w.add_box(0, 0, -0.5, 0, 9, 0.5, 9, 0);            // zemin
+      const specs = [];
+      for (let i = 0; i < 14; i++)                          // küre yağmuru
+        specs.push({ t:'sph', x:(i%5-2)*1.15, y:4.5+(i%4)*0.9, z:((i/5|0)-1)*1.2, r:0.42 });
+      for (let i = 0; i < 10; i++)                          // kutu kulesi
+        specs.push({ t:'box', x:(i%2? .46 : -.46), y:0.55+(i/2|0)*0.92, z:2.6, hx:0.42, hy:0.42, hz:0.42 });
+      for (const s of specs)
+        s.t==='sph' ? w.add_sphere(1, s.x, s.y, s.z, s.r, 1) : w.add_box(1, s.x, s.y, s.z, s.hx, s.hy, s.hz, 1);
+      return { w, specs };
+    }
+
+    // ── 1) MÜHÜR: görünmez kopyayı 600 kare ileri sar ──
+    await init();
+    let sealHash;
+    {
+      const { w } = buildWorld();
+      for (let f = 0; f < TARGET; f++) w.step(DT);
+      sealHash = w.state_hash();
+      document.getElementById('sealHash').textContent = sealHash;
+    }
+
+    // ── 2) CANLI: aynı dünya, gerçek zamanda + three.js render ──
+    const stage = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    stage.appendChild(renderer.domElement);
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0f1115);
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    camera.position.set(8.5, 6.5, 10); controls.target.set(0, 1.4, 0); controls.update();
+    scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x202028, 1.15));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.0); dl.position.set(8, 16, 10); scene.add(dl);
+    function resize(){ const w=innerWidth, h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+    addEventListener('resize', resize); resize();
+
+    const mat = c => new THREE.MeshStandardMaterial({ color:c, roughness:.5, metalness:.08 });
+    let world=null, meshes=[], frame=0, nudged=false, running=false, group=null;
+
+    function start() {
+      if (group) scene.remove(group);
+      group = new THREE.Group(); scene.add(group); meshes = [];
+      const { w, specs } = buildWorld(); world = w;
+      const g = new THREE.Mesh(new THREE.BoxGeometry(18,1,18), mat(0x232a38)); g.position.y = -0.5; group.add(g); meshes.push(g);
+      specs.forEach((s,i) => {
+        const m = s.t==='sph'
+          ? new THREE.Mesh(new THREE.SphereGeometry(s.r,18,14), mat(PAL[i%PAL.length]))
+          : new THREE.Mesh(new THREE.BoxGeometry(2*s.hx,2*s.hy,2*s.hz), mat(PAL[i%PAL.length]));
+        group.add(m); meshes.push(m);
+      });
+      frame = 0; nudged = false; running = true;
+      document.getElementById('verdict').style.display = 'none';
+      document.getElementById('nudge').disabled = false;
+    }
+
+    function finish() {
+      running = false;
+      const live = world.state_hash();
+      const ok = (live === sealHash) && !nudged;
+      const v = document.getElementById('verdict');
+      v.className = ''; v.classList.add(ok ? 'ok' : 'bad'); v.style.display = 'flex';
+      document.getElementById('vTitle').textContent = ok ? '✓ GELECEK DOĞRULANDI' : '✗ ZAMAN ÇİZGİSİ DEĞİŞTİ';
+      document.getElementById('vSeal').textContent = sealHash;
+      document.getElementById('vLive').textContent = live;
+      document.getElementById('vMsg').textContent = ok
+        ? '600 kare önce yazılan mühür, canlı koşumun ürettiği parmak iziyle bitine kadar aynı. Bu tesadüf değil: deterministik çekirdekte gelecek, girdiler sabitken TEK olasılıktır. Aynı sahne Windows\'ta, Linux\'ta, konsolda da bu hash\'i üretir.'
+        : (nudged
+          ? 'Tek bir dürtme — tek bir girdi farkı — 600. karede bambaşka bir evren üretti ve mühür anında yakaladı. Determinizm farkları gizlemez; tam tersine, EN KÜÇÜK farkı bile kanıtlanabilir yapar (sapma dedektörünün temeli).'
+          : 'Canlı hash mühürden farklı çıktı — beklenmedik durum.');
+    }
+
+    document.getElementById('nudge').onclick = () => {
+      if (!running || !world) return;
+      nudged = true;
+      world.set_linvel(3, 2.5, 4.0, -1.5);   // 3 no'lu gövdeye dışarıdan itki
+      document.getElementById('nudge').disabled = true;
+      document.getElementById('sealHash').style.color = 'var(--bad)';
+      setTimeout(()=>document.getElementById('sealHash').style.color='', 600);
+    };
+    document.getElementById('restart').onclick = start;
+    document.getElementById('vAgain').onclick = start;
+
+    // ── Döngü ──
+    const fill = document.getElementById('fill'), fr = document.getElementById('frame');
+    function loop() {
+      requestAnimationFrame(loop);
+      controls.update();
+      if (running && world) {
+        world.step(DT); frame++;
+        const t = world.transforms();
+        for (let i = 1; i < meshes.length; i++) {           // 0 = zemin (statik)
+          const o = i * 7;
+          meshes[i].position.set(t[o], t[o+1], t[o+2]);
+          meshes[i].quaternion.set(t[o+3], t[o+4], t[o+5], t[o+6]);
+        }
+        fill.style.width = (frame / TARGET * 100) + '%';
+        fr.textContent = `kare ${frame} / ${TARGET}`;
+        if (frame >= TARGET) finish();
+      }
+      renderer.render(scene, camera);
+    }
+    start(); loop();
+  </script>
+</body>
+</html>

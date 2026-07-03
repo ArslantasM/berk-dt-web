@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Berk Digital Twin — WASM demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; margin: 24px; }
+    h1 { font-size: 1.2rem; }
+    canvas { background: #1a1d24; border: 1px solid #333; border-radius: 6px; }
+    .hash { font-family: ui-monospace, monospace; color: #7fd1ff; }
+    .muted { color: #9aa; font-size: 0.9rem; max-width: 620px; }
+  </style>
+</head>
+<body>
+  <h1>Berk Digital Twin — deterministik fizik, tarayıcıda (sabit-nokta)</h1>
+  <p class="muted">
+    Tüm matematik <code>Fx64</code> (Q32.32) sabit-noktadır → aynı girdi her platformda
+    (ve tarayıcıda) <b>bit-aynı</b> sonuç verir. Aşağıdaki <code>state_hash</code> bunun
+    kanıtıdır: aynı senaryo başka bir makinede/tarayıcıda aynı diziyi üretir.
+  </p>
+  <canvas id="c" width="600" height="400"></canvas>
+  <p>state_hash: <span id="h" class="hash">…</span> · adım: <span id="f">0</span></p>
+
+  <script type="module">
+    import init, { WasmWorld } from "../pkg/berk_dt_wasm.js";
+
+    async function main() {
+      await init();
+      const w = new WasmWorld(0.0, -10.0);
+      w.add_box(0, 0.0, -3.0, 8.0, 0.5, 1.0); // zemin (static)
+      for (let i = 0; i < 16; i++) {
+        const x = (i % 4 - 1.5) * 1.2;
+        const y = 4.0 + Math.floor(i / 4) * 1.2;
+        w.add_box(1, x, y, 0.5, 0.5, 1.0);     // düşen kutular (dynamic)
+      }
+
+      const ctx = document.getElementById("c").getContext("2d");
+      const hEl = document.getElementById("h");
+      const fEl = document.getElementById("f");
+      const SX = 40, OX = 300, OY = 320; // dünya→ekran
+      const dt = 1 / 60;
+      let frame = 0;
+
+      function rect(cx, cy, hx, hy, ang, color) {
+        ctx.save();
+        ctx.translate(OX + cx * SX, OY - cy * SX);
+        ctx.rotate(-ang);
+        ctx.fillStyle = color;
+        ctx.fillRect(-hx * SX, -hy * SX, 2 * hx * SX, 2 * hy * SX);
+        ctx.restore();
+      }
+
+      function loop() {
+        w.step(dt);                       // SABİT adım → deterministik
+        ctx.clearRect(0, 0, 600, 400);
+        rect(w.body_x(0), w.body_y(0), 8.0, 0.5, w.body_angle(0), "#444"); // zemin
+        for (let id = 1; id < w.body_count(); id++) {
+          rect(w.body_x(id), w.body_y(id), 0.5, 0.5, w.body_angle(id), "#5cc8ff");
+        }
+        hEl.textContent = "0x" + w.state_hash();
+        fEl.textContent = (++frame).toString();
+        requestAnimationFrame(loop);
+      }
+      loop();
+    }
+    main();
+  </script>
+</body>
+</html>

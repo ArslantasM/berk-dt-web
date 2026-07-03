@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hash Mutabakatı — Her Cihaz, Tek Sonuç · Berk Digital Twin</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#161a22; --line:#262c38; --fg:#e6e6e6; --muted:#8b94a6; --accent:#5cc8ff; --ok:#3fb950; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; min-height:100%; }
+    body { font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; align-items:center; padding:20px 16px 40px; }
+    .mono { font-family: ui-monospace, Consolas, monospace; }
+    h1 { margin:6px 0 2px; font-size:1.5rem; text-align:center; }
+    h1 a { color:var(--muted); text-decoration:none; font-weight:400; font-size:.8rem; }
+    p.sub { margin:6px 0 18px; color:var(--muted); font-size:.9rem; text-align:center; max-width:640px; line-height:1.5; }
+
+    #simwrap { position:relative; }
+    canvas#sim { background:#12151d; border:1px solid var(--line); border-radius:12px; display:block; }
+    #status { position:absolute; top:10px; left:12px; font-size:.78rem; color:var(--muted); }
+
+    #hashcard { margin-top:18px; text-align:center; width:min(680px, 94vw); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+    #hashcard .cap { font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+    #hash { font-size:clamp(1rem, 3.4vw, 1.6rem); color:var(--accent); word-break:break-all; margin:8px 0 12px; min-height:1.2em; }
+    /* Renk şeridi: hash'in uzaktan okunabilir hali — iki cihazda aynı hash = aynı renk dizisi */
+    #strip { display:flex; gap:6px; justify-content:center; }
+    #strip .blk { width:clamp(28px, 7vw, 52px); height:clamp(28px, 7vw, 52px); border-radius:8px; border:1px solid #00000055; }
+    #hashcard .hint { margin-top:10px; font-size:.8rem; color:var(--muted); }
+
+    /* Ekran modu: QR + davet */
+    #invite { margin-top:18px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; justify-content:center;
+      background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 20px; }
+    #qr { background:#fff; padding:8px; border-radius:8px; }
+    #invite .txt { max-width:360px; font-size:.9rem; color:var(--muted); line-height:1.55; }
+    #invite .txt b { color:var(--fg); }
+    #invite .url { font-size:.78rem; color:var(--accent); word-break:break-all; }
+    #lanwarn { color:#ffd166; font-size:.78rem; margin-top:6px; display:none; }
+
+    /* Katılımcı modu */
+    body.katil #invite { display:none; }
+    body.katil canvas#sim { width:min(92vw, 420px); }
+    #verdictline { display:none; margin-top:14px; font-size:1.02rem; }
+    body.katil #verdictline { display:block; text-align:center; }
+    .btn { background:#161a22cc; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:.9rem; margin-top:14px; }
+    .btn:hover { background:#20304a; color:var(--accent); }
+  </style>
+</head>
+<body>
+  <h1>🤝 Hash Mutabakatı <a href="index.html">← ana sayfa</a></h1>
+  <p class="sub" id="subtitle">Aynı simülasyon şu anda bu salondaki her cihazda koşuyor — iPhone, Android, dizüstü…
+    600 kare sonra her cihaz 64-bit bir parmak izi üretecek. <b>Hepsi aynı olacak.</b></p>
+
+  <div id="simwrap">
+    <canvas id="sim" width="560" height="360"></canvas>
+    <div id="status" class="mono">kare 0 / 600</div>
+  </div>
+
+  <div id="hashcard">
+    <div class="cap">Bu cihazın ürettiği parmak izi · <span id="dev"></span></div>
+    <div id="hash" class="mono">koşuyor…</div>
+    <div id="strip"></div>
+    <div class="hint" id="striphint">Renk dizisi hash'in görsel halidir — perdedeki dizilimle <b>birebir aynı</b> olmalı.</div>
+  </div>
+
+  <div id="verdictline">Perdedeki renklerle aynı mı? Aynıysa az önce çapraz-platform determinizmi kendi elinizle doğruladınız. ✓</div>
+
+  <div id="invite">
+    <div id="qr"></div>
+    <div class="txt">
+      <b>Telefonunuzla katılın:</b> QR'ı okutun — aynı simülasyon sizin cihazınızda da koşsun.
+      Sonunda çıkan renk dizisini perdedekiyle karşılaştırın.
+      <div class="url" id="joinurl"></div>
+      <div id="lanwarn">⚠ Bu sayfa <b>localhost</b> üzerinden açık — telefonların erişebilmesi için sayfayı
+        makinenin LAN IP'siyle açın (ör. <span class="mono">http://192.168.1.X:8080/www/mutabakat.html</span>).</div>
+    </div>
+  </div>
+
+  <button class="btn" id="again">↺ Yeniden koş</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script type="module">
+    import init, { WasmWorld, sim_version } from '../pkg/berk_dt_wasm.js';
+
+    const TARGET = 600, DT = 1/60;
+    const katil = new URLSearchParams(location.search).has('katil');
+    if (katil) document.body.classList.add('katil');
+
+    // Cihaz etiketi (yalnız gösterim)
+    const ua = navigator.userAgent;
+    document.getElementById('dev').textContent =
+      /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' :
+      /Windows/i.test(ua) ? 'Windows' : /Mac/i.test(ua) ? 'macOS' : /Linux/i.test(ua) ? 'Linux' : 'cihaz';
+
+    // Ekran modu: QR + katılım URL'si
+    if (!katil) {
+      const u = new URL(location.href); u.searchParams.set('katil', '1');
+      document.getElementById('joinurl').textContent = u.href;
+      new QRCode(document.getElementById('qr'), { text: u.href, width: 148, height: 148, correctLevel: QRCode.CorrectLevel.M });
+      if (['localhost','127.0.0.1','::1'].includes(location.hostname))
+        document.getElementById('lanwarn').style.display = 'block';
+    } else {
+      document.getElementById('subtitle').innerHTML =
+        'Aynı simülasyon şimdi <b>sizin cihazınızda</b> koşuyor. Bittiğinde renk dizinizi perdedekiyle karşılaştırın.';
+    }
+
+    // ── Deterministik 2B sahne: her cihazda birebir aynı kurulum ──
+    function buildWorld() {
+      const w = new WasmWorld(0, -10);
+      w.add_box(0, 0, -0.5, 12, 0.5, 0);                    // zemin
+      w.add_box(0, -7.5, 3, 0.5, 4, 0);                     // sol duvar
+      w.add_box(0,  7.5, 3, 0.5, 4, 0);                     // sağ duvar
+      const specs = [];
+      for (let i = 0; i < 26; i++) {
+        if (i % 2) specs.push({ t:'c', x:(i%7-3)*1.02, y:3.2+(i%5)*1.15, r:0.34 });
+        else       specs.push({ t:'b', x:(i%6-2.5)*1.11, y:2.6+(i%4)*1.3, hx:0.34, hy:0.34 });
+      }
+      for (const s of specs)
+        s.t==='c' ? w.add_circle(1, s.x, s.y, s.r, 1) : w.add_box(1, s.x, s.y, s.hx, s.hy, 1);
+      return { w, specs };
+    }
+
+    // ── Render (canvas 2D — telefon dostu, bağımlılıksız) ──
+    const cv = document.getElementById('sim'), cx = cv.getContext('2d');
+    const PAL = ['#5cc8ff','#ff7a59','#9b8cff','#4be0a0','#ffd166','#ff5fa2'];
+    const S = 32, OX = cv.width/2, OY = cv.height - 30;     // dünya→piksel
+    function draw(w, specs) {
+      cx.clearRect(0, 0, cv.width, cv.height);
+      cx.fillStyle = '#1b2230';                              // zemin + duvarlar
+      cx.fillRect(OX-12*S, OY-0.0*S, 24*S, 1*S);
+      cx.fillRect(OX-8*S, OY-7*S, 1*S, 8*S); cx.fillRect(OX+7*S, OY-7*S, 1*S, 8*S);
+      specs.forEach((s, i) => {
+        const id = i + 3;                                    // 0-2 statik
+        const px = OX + w.body_x(id)*S, py = OY - w.body_y(id)*S, a = -w.body_angle(id);
+        cx.fillStyle = PAL[i % PAL.length];
+        if (s.t === 'c') { cx.beginPath(); cx.arc(px, py, s.r*S, 0, 7); cx.fill(); }
+        else { cx.save(); cx.translate(px, py); cx.rotate(a); cx.fillRect(-s.hx*S, -s.hy*S, 2*s.hx*S, 2*s.hy*S); cx.restore(); }
+      });
+    }
+
+    // ── Hash → renk şeridi: uzaktan karşılaştırılabilir 8 blok ──
+    function paintStrip(hash) {
+      const el = document.getElementById('strip'); el.innerHTML = '';
+      const hex = hash.replace(/^0x/, '').padStart(16, '0');
+      for (let i = 0; i < 8; i++) {
+        const byte = parseInt(hex.slice(i*2, i*2+2), 16);
+        const d = document.createElement('div'); d.className = 'blk';
+        d.style.background = `hsl(${Math.round(byte/255*360)}, 72%, ${34 + (byte % 3) * 14}%)`;
+        el.appendChild(d);
+      }
+    }
+
+    await init();
+    let world, specs, frame, running;
+    function start() {
+      ({ w: world, specs } = buildWorld());
+      frame = 0; running = true;
+      document.getElementById('hash').textContent = 'koşuyor…';
+      document.getElementById('strip').innerHTML = '';
+    }
+    document.getElementById('again').onclick = start;
+
+    const status = document.getElementById('status');
+    function loop() {
+      requestAnimationFrame(loop);
+      if (!running) return;
+      for (let k = 0; k < 2 && frame < TARGET; k++) { world.step(DT); frame++; }   // 2× hız: ~5 sn'de biter
+      draw(world, specs);
+      status.textContent = `kare ${frame} / ${TARGET} · sim v${sim_version()}`;
+      if (frame >= TARGET) {
+        running = false;
+        const h = world.state_hash();
+        document.getElementById('hash').textContent = h;
+        paintStrip(h);
+      }
+    }
+    start(); loop();
+  </script>
+</body>
+</html>

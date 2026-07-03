@@ -1,0 +1,24 @@
+{
+  "schema": "berk-dt/scenario@1",
+  "name": "determinism-wall-avalanche",
+  "world": "world3",
+  "gravity": [0.0, -9.81, 0.0],
+  "seed": 7,
+  "dt_ns": 16666667,
+  "substeps": 4,
+  "bodies": [
+    { "kind": "static",  "shape": "box", "pos": [0.0, 0.0, 0.0], "half": [50.0, 1.0, 50.0], "friction": 0.6 },
+
+    { "kind": "dynamic", "shape": "box", "pos": [-0.3, 1.35, -0.3], "half": [0.25, 0.25, 0.25], "friction": 0.4, "restitution": 0.05 },
+    { "kind": "dynamic", "shape": "box", "pos": [ 0.3, 1.35, -0.3], "half": [0.25, 0.25, 0.25], "friction": 0.4, "restitution": 0.05 },
+    { "kind": "dynamic", "shape": "box", "pos": [-0.3, 1.35,  0.3], "half": [0.25, 0.25, 0.25], "friction": 0.4, "restitution": 0.05 },
+    { "kind": "dynamic", "shape": "box", "pos": [ 0.3, 1.35,  0.3], "half": [0.25, 0.25, 0.25], "friction": 0.4, "restitution": 0.05 },
+    { "kind": "dynamic", "shape": "box", "pos": [ 0.0, 1.95,  0.0], "half": [0.25, 0.25, 0.25], "friction": 0.4, "restitution": 0.05 }
+  ],
+  "events": [
+    { "frame": 90,  "op": "spawn_burst", "count": 512, "origin": [0.0, 14.0, 0.0], "spread": 3.0, "shape": "box", "half": [0.25, 0.25, 0.25] },
+    { "frame": 150, "op": "impulse", "body": 5, "v": [6.0, 0.0, 2.0] }
+  ],
+  "frames": 600,
+  "golden_hash": "ead2179ab352749c"
+}

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0f17" />
+  <title>Rakip Analizi — Berk Digital Twin</title>
+  <style>
+    :root { --bg:#0c0f17; --fg:#eef2f8; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a;
+      --card:#10151f; --y:#4be0a0; --p:#ffd166; --n:#ff6b7a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--fg);
+      line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .glow { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(55% 40% at 50% 0%, #18203a66, transparent 70%),
+                  radial-gradient(40% 40% at 90% 90%, #2a1f4a44, transparent 70%); }
+
+    header { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(10px);
+      background: #0c0f17cc; border-bottom: 1px solid var(--line); }
+    .nav { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 14px; padding: 12px 22px; }
+    .nav .brand { font-weight: 700; letter-spacing: -0.01em; }
+    .nav .brand .dt { background: linear-gradient(100deg, #5cc8ff, #7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .nav .spacer { flex: 1; }
+    .nav a { color: var(--muted); text-decoration: none; font-size: 0.86rem; border: 1px solid var(--line);
+      background: #11162288; border-radius: 9px; padding: 7px 13px; transition: border-color .15s, color .15s; }
+    .nav a:hover { border-color: var(--accent); color: var(--accent); }
+    .nav a.home { border: none; background: none; padding: 7px 4px; }
+
+    main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 40px 22px 90px; }
+
+    .badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.76rem; color: var(--muted);
+      border: 1px solid var(--line); background: #11162299; border-radius: 999px; padding: 6px 14px; }
+    .badge .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 #5cc8ff80; animation: pulse 2.4s infinite; }
+    @keyframes pulse { 70% { box-shadow: 0 0 0 9px #5cc8ff00; } 100% { box-shadow: 0 0 0 0 #5cc8ff00; } }
+
+    h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -0.02em; margin: 18px 0 6px; line-height: 1.05;
+      background: linear-gradient(100deg, #eaf3ff, #8fb6ff 45%, #7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { color: #cdd6e8; font-size: 1.08rem; max-width: 760px; }
+    h2 { font-size: 1.35rem; margin: 52px 0 6px; letter-spacing: -0.01em; }
+    h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 8px; }
+    h3 { font-size: 1.04rem; margin: 26px 0 4px; color: #dbe4f4; }
+    p { color: #c2cce0; }
+    a.inline { color: var(--accent); }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+    .pill { font-size: 0.78rem; color: #b9c4da; border: 1px solid var(--line); background: #10151f88; border-radius: 8px; padding: 5px 11px; }
+    .pill b { color: var(--accent); font-weight: 600; }
+
+    .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
+    @media (max-width: 640px) { .lanes { grid-template-columns: 1fr; } }
+    .lane { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; background: #0d121b88; }
+    .lane.cpu { border-color: #2b5a44; box-shadow: inset 0 0 0 1px #1c3a2c44; }
+    .lane.gpu { border-color: #5a4a2b; box-shadow: inset 0 0 0 1px #3a2c1c44; }
+    .lane-h { font-weight: 700; font-size: 1.02rem; color: #eaf3ff; margin-bottom: 7px; }
+    .lane-b { font-size: 0.92rem; color: #c2cce0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 18px; }
+    .card { border: 1px solid var(--line); background: linear-gradient(180deg, #11162288, #0d121b88); border-radius: 14px; padding: 18px 18px 16px; }
+    .card .k { font-size: 1.5rem; font-weight: 800; color: #eaf3ff; letter-spacing: -0.02em; }
+    .card .t { font-weight: 600; margin: 2px 0 6px; color: #dbe4f4; }
+    .card .d { font-size: 0.9rem; color: var(--muted); }
+
+    .tablewrap { overflow-x: auto; margin: 16px 0 4px; border: 1px solid var(--line); border-radius: 14px; }
+    table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.9rem; }
+    thead th { text-align: left; background: #131a27; color: #dbe4f4; font-weight: 600; padding: 11px 13px; position: sticky; top: 0;
+      border-bottom: 1px solid var(--line); white-space: nowrap; }
+    thead th.berk { color: #eaf3ff; background: linear-gradient(180deg, #1c2740, #15203a); }
+    tbody td { padding: 10px 13px; border-bottom: 1px solid #1a2130; vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody td:first-child { color: #dbe4f4; font-weight: 500; }
+    tbody td.berk { background: #121a2a; }
+    tr:hover td { background: #0f1623; }
+    tr:hover td.berk { background: #142036; }
+    .y { color: var(--y); font-weight: 600; } .p { color: var(--p); } .n { color: var(--n); }
+    .mut { color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.82rem; color: var(--muted); margin: 10px 2px 0; }
+
+    ul.clean { list-style: none; padding: 0; margin: 12px 0; }
+    ul.clean li { position: relative; padding: 9px 0 9px 26px; border-bottom: 1px solid #161d2b; color: #c8d2e6; }
+    ul.clean li:before { content: "▸"; color: var(--accent); position: absolute; left: 4px; top: 9px; }
+    ul.clean li b { color: #eaf3ff; }
+
+    .quote { border-left: 3px solid var(--accent2); background: #11162244; padding: 14px 18px; border-radius: 0 12px 12px 0; margin: 18px 0; color: #d6deee; }
+    .src { font-size: 0.82rem; color: var(--muted); }
+    .src a { color: #8fb6ff; word-break: break-all; }
+    footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; text-align: center; padding: 26px 22px 40px; position: relative; z-index: 1; }
+    footer .badge2 { font-family: ui-monospace, monospace; color: #7fd1ff; }
+    .disc { font-size: 0.82rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <header>
+    <nav class="nav">
+      <a class="home" href="index.html">← <span class="brand">Berk <span class="dt">DT</span></span></a>
+      <span class="spacer"></span>
+      <a href="demos.html">Demolar</a>
+      <a href="gpu.html">GPU: Üç Beyin</a>
+      <a href="replay.html">Determinizm müfettişi</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="badge"><span class="pulse"></span> Rekabet Analizi · 3 Temmuz 2026'da pazar taramasıyla güncellendi</div>
+    <h1>Rakip Analizi</h1>
+    <p class="lede">Berk Digital Twin'i deterministik fizik motorları, robotik/dijital-ikiz
+      simülatörleri ve üst-seviye dijital-ikiz platformlarıyla karşılaştırma. Rakip verileri
+      kamuya açık dokümantasyondan; Berk rakamları bu repodaki ölçülen/test edilmiş değerlerdir.</p>
+
+    <h2><span class="num">1</span>Konumlandırma</h2>
+    <p>Berk'in ayırt edici tezi: <b style="color:#eaf3ff">inşa gereği (sabit-nokta) çapraz-platform
+      bit-aynı determinizm + entegre, açıklanabilir karar/Digital-Twin katmanı + formal doğrulama</b>,
+      tek tescilli/ticari çekirdekte. Pazarda iki ucu birleştirir:</p>
+    <div class="cards">
+      <div class="card">
+        <div class="t">Fizik motorları</div>
+        <div class="d">Box2D, Rapier, Jolt, PhysX — güçlü fizik ama <b style="color:#cdd6e8">yalnız fizik</b>;
+          karar/twin katmanı yok, determinizm çoğunlukla float + derleyici bayraklarıyla (kırılgan).</div>
+      </div>
+      <div class="card">
+        <div class="t">Dijital-ikiz platformları</div>
+        <div class="d">NVIDIA Omniverse, Azure Digital Twins — üst-seviye görselleştirme/IoT, ama
+          <b style="color:#cdd6e8">deterministik çapraz-platform çekirdek</b> ve gömülü hafiflik vaadi taşımaz.</div>
+      </div>
+      <div class="card" style="border-color:#2a3a55;">
+        <div class="t" style="color:#eaf3ff;">Berk DT — kesişim</div>
+        <div class="d">Fixed-point determinizm <i>artı</i> karar/twin katmanı <i>artı</i> formal doğrulama,
+          tek hafif gömülebilir çekirdekte.</div>
+      </div>
+    </div>
+    <div class="pill-row" style="margin-top:16px;">
+      <span class="pill"><b>Dijital ikiz pazarı:</b> 2026'da ~34-49 milyar $ · %31-41 YBBO</span>
+      <span class="pill"><b>Oyun motoru:</b> 2026'da ~3,9 milyar $ → 2034'te ~10,3 milyar $</span>
+      <span class="pill"><b>Netcode ara katmanı:</b> 1,37 milyar $ (2024) → ~3,9 milyar $ (2033)</span>
+      <span class="pill"><b>Simülasyon yazılımı:</b> ~18,4 milyar $ (2025) · %11,7 YBBO</span>
+    </div>
+    <p class="mut" style="font-size:0.85rem;">Pazar rakamları Temmuz 2026 taraması (Fortune BI, Grand View, Precedence, Dataintelo, Insight Partners); firmaya göre aralık verilmiştir.</p>
+
+    <h2><span class="num">2</span>Çapraz-platform deterministik fizik motorları</h2>
+    <p class="mut" style="font-size:0.9rem;">En yakın rakipler — determinizmin <i>nasıl</i> sağlandığı kritik fark.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Motor</th><th>Determinizm yöntemi</th><th>Çapraz-platform bit-aynı?</th><th>Lisans</th><th>Not</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="berk"><b style="color:#eaf3ff">Berk DT</b></td>
+            <td class="berk"><span class="y">Sabit-nokta Fx64 (Q32.32)</span></td>
+            <td class="berk"><span class="y">Evet — inşa gereği</span><br><span class="mut">IEEE/FMA bayraklarına bağlı değil; CI ile Win/Linux/macOS x64+arm64</span></td>
+            <td class="berk">Kapalı / Ticari</td>
+            <td class="berk">+ karar/twin katmanı, + formal doğrulama</td>
+          </tr>
+          <tr>
+            <td>Rapier <span class="mut">(dimforge)</span></td>
+            <td>Float + <code>enhanced-determinism</code></td>
+            <td><span class="p">Evet, ama yalnız IEEE-754-2008 platformlarında</span></td>
+            <td>Apache-2.0</td>
+            <td>Olgun, Rust; fixed-point değil</td>
+          </tr>
+          <tr>
+            <td>Jolt <span class="mut">(jrouwe)</span></td>
+            <td>Float + <code>JPH_CROSS_PLATFORM_DETERMINISTIC</code></td>
+            <td><span class="p">Evet, ama FMA kapatma + tutarlı FP modları şart</span></td>
+            <td>MIT</td>
+            <td>AAA kanıtlı (Horizon FW, Death Stranding 2), çok-çekirdekli</td>
+          </tr>
+          <tr>
+            <td>Havok Physics</td>
+            <td>Float + platform-içi tutarlılık disiplini</td>
+            <td><span class="n">Hayır — aynı platformda tutarlı, çapraz-platform bit-aynılık garanti edilmez</span></td>
+            <td>Ticari — ≤20M$ bütçeli oyuna 50.000$ tek-seferlik, telifsiz (2026 modeli)</td>
+            <td>AAA standardı; determinizm hendeğine giremez</td>
+          </tr>
+          <tr>
+            <td>Box2D v3 <span class="mut">(E. Catto)</span></td>
+            <td>Float + sıkı derleyici ayarları (FMA kapalı)</td>
+            <td><span class="p">Aynı derleme zinciri için; çapraz-platform kırılgan</span></td>
+            <td>MIT</td>
+            <td>TGS-Soft solver (Berk 2B solver'ı bu sınıfta), 2B</td>
+          </tr>
+          <tr>
+            <td>Box3D <span class="mut">(E. Catto — YENİ, 30 Haz 2026)</span></td>
+            <td>Float (C17); determinizm birincil hedef değil</td>
+            <td><span class="p">Erken aşama — izlenmeli</span></td>
+            <td>MIT</td>
+            <td>Catto markasıyla açık-kaynak 3B; fiyat baskısı yaratabilir, determinizm/karar katmanı yok</td>
+          </tr>
+          <tr>
+            <td>Photon Quantum</td>
+            <td><span class="y">Sabit-nokta (Q48.16)</span></td>
+            <td><span class="y">Evet (fixed-point)</span></td>
+            <td>Ticari SaaS — CCU aboneliği: 100 CCU ücretsiz · 200 CCU 95$/yıl · 500 CCU 125$/ay · 2000 CCU 500$/ay (2026)</td>
+            <td>Oyun netcode/ECS odaklı; <b style="color:#cdd6e8">yalnız Unity</b> (Verified Solution) + kendi bulutu — Unreal/robotik/kapalı-ağ dışarıda; digital-twin değil</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="quote">Rapier/Jolt/Box2D determinizmi <b>float</b> üzerine kuruludur; çapraz-platform bit-aynılık
+      IEEE-754 uyumu + FMA kapatma + derleyici bayraklarına bağlıdır ve bir derleyici/mimari değişikliği bunu
+      sessizce bozabilir. Berk DT ve Photon Quantum <b>sabit-nokta</b> kullanır → determinizm inşa gereği. Bu iki
+      fixed-point oyuncudan Photon <i>oyun-netcode</i> odaklıdır; <b style="color:#eaf3ff">Berk DT ise bir Digital-Twin
+      çekirdeğidir</b> (fizik + karar + köprü).</div>
+
+    <h2><span class="num">3</span>Robotik / dijital-ikiz simülatörleri</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Araç</th><th>Odak</th><th>Determinizm</th><th>Lisans</th><th>Not</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="berk"><b style="color:#eaf3ff">Berk DT</b></td>
+            <td class="berk">Deterministik fizik + karar + twin</td>
+            <td class="berk"><span class="y">Çapraz-platform bit-aynı (fixed-point)</span></td>
+            <td class="berk">Kapalı / Ticari</td>
+            <td class="berk">Hafif, motor-gömülebilir, FFI/Unreal</td>
+          </tr>
+          <tr>
+            <td>MuJoCo <span class="mut">(DeepMind)</span></td>
+            <td>Robotik/araştırma fiziği</td>
+            <td><span class="p">Deterministik (aynı derleme); float, C</span></td>
+            <td>Apache-2.0</td>
+            <td>Olgun robotik standardı; çapraz-platform bit-aynı garanti vermez</td>
+          </tr>
+          <tr>
+            <td>NVIDIA Isaac/Omniverse</td>
+            <td>Endüstriyel dijital ikiz, RL</td>
+            <td><span class="p">GPU/float; "deterministik" ama platform-bağlı</span></td>
+            <td>Tescilli (Isaac Sim 5.0 açık-kaynak, 2025)</td>
+            <td>GPU ile devasa ölçek + ışın izleme; ağır altyapı; 2026'da robotik-RL iş ilanlarında lider</td>
+          </tr>
+          <tr>
+            <td>Newton <span class="mut">(NVIDIA+DeepMind+Disney — YENİ)</span></td>
+            <td>GPU (Warp/OpenUSD); MuJoCo-Warp dahil çoklu çözücü</td>
+            <td><span class="p">GPU/float; bit-aynılık hedefi değil</span></td>
+            <td>Açık kaynak (Linux Foundation)</td>
+            <td>Sim-to-real odaklı; alanın stratejik önemini teyit ediyor — denetlenebilir koşum/kayıt boşluğu duruyor</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mut" style="font-size:0.9rem;">Üst-seviye platformlar (Omniverse, Azure Digital Twins) doğrudan rakip
+      değil; Berk DT bu platformların <i>içine</i> (veya Unreal'e) gömülebilecek deterministik karar/fizik çekirdeği
+      konumundadır.</p>
+
+    <h2><span class="num">4</span>Özellik karşılaştırması</h2>
+    <div class="legend">
+      <span><span class="y">✅</span> tam destek</span>
+      <span><span class="p">⚠️</span> kısmi / koşullu</span>
+      <span><span class="n">❌</span> yok</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Yetenek</th><th class="berk">Berk DT</th><th>Rapier</th><th>Jolt</th><th>Box2D v3</th><th>Photon Q.</th><th>MuJoCo</th><th>Omniverse</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Sabit-nokta determinizm</td><td class="berk y">✅</td><td class="n">❌ float</td><td class="n">❌ float</td><td class="n">❌ float</td><td class="y">✅</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Çapraz-platform bit-aynı</td><td class="berk y">✅ inşa gereği</td><td class="p">⚠️ IEEE</td><td class="p">⚠️ bayrak</td><td class="p">⚠️ kırılgan</td><td class="y">✅</td><td class="p">⚠️</td><td class="n">❌</td></tr>
+          <tr><td>2B + 3B</td><td class="berk y">✅</td><td class="y">✅</td><td class="y">✅ 3B</td><td class="mut">2B</td><td class="y">✅</td><td class="mut">3B</td><td class="mut">3B</td></tr>
+          <tr><td>Statik üçgen-mesh collider</td><td class="berk y">✅ BVH'li</td><td class="y">✅</td><td class="y">✅</td><td class="mut">—</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Genel dışbükey (GJK+SAT)</td><td class="berk y">✅ mixed + FFI</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅ 2B</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Yumuşak cisim / kumaş</td><td class="berk y">✅ XPBD 2B/3B</td><td class="y">✅ eklenti</td><td class="p">⚠️</td><td class="n">❌</td><td class="p">⚠️</td><td class="p">⚠️</td><td class="y">✅</td></tr>
+          <tr><td>Sürekli çarpışma (CCD)</td><td class="berk y">✅ opt-in 3B+2B</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅ 2B</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Batmazlık (buoyancy)</td><td class="berk y">✅ opt-in</td><td class="p">⚠️</td><td class="y">✅</td><td class="p">⚠️</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Akışkan (PBF parçacık)</td><td class="berk y">✅ iki-yön + snapshot</td><td class="p">⚠️</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="y">✅</td></tr>
+          <tr><td>Broadphase (SAP/BVH)</td><td class="berk y">✅ SAP veya det. BVH</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Eklemler (+motor/limit)</td><td class="berk y">✅ + Featherstone ABA</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Deterministik sensör (LiDAR)</td><td class="berk y">✅ BVH-hızlı, bit-aynı</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">⚠️</td><td class="y">✅ GPU</td></tr>
+          <tr><td>Karar / Digital-Twin katmanı</td><td class="berk y">✅ gömülü</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">kısmi</td></tr>
+          <tr><td>Açıklanabilirlik / provenance</td><td class="berk y">✅</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Formal doğrulama (TLA+)</td><td class="berk y">✅</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Snapshot + rollback netcode</td><td class="berk y">✅ GGPO tarzı</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="y">✅</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Sapma (divergence) ayıklayıcı</td><td class="berk y">✅ +CLI</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">⚠️</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Tahsis-içermez sıcak yol</td><td class="berk y">✅ kanıtlı</td><td class="p">⚠️</td><td class="y">✅</td><td class="p">⚠️</td><td class="y">✅</td><td class="p">⚠️</td><td class="mut">—</td></tr>
+          <tr><td>Tek + çok-çekirdek <span class="mut">(deterministik)</span></td><td class="berk y">✅ tek+çok, bit-aynı (opt-in)</td><td class="p">⚠️ kısmi, det.değil</td><td class="p">⚠️ çok-çek., det.değil</td><td class="n">❌ tek-thr.</td><td class="n">❌ tek-thr.</td><td class="n">❌ tek-thr.</td><td class="p">⚠️ GPU, det.değil</td></tr>
+          <tr><td>GPU hızlandırma <span class="mut">(WCET-sınırlı)</span></td><td class="berk y">✅ deterministik (opt-in)</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">⚠️ var, WCET'siz</td><td class="p">⚠️ GPU, det.değil</td></tr>
+          <tr><td>Entegrasyon / dil bağlama</td><td class="berk y">✅ C-ABI · Unreal · Unity · WASM</td><td class="y">Rust · JS/WASM</td><td>C++</td><td>C</td><td>Unity / C#</td><td>C · Python</td><td>USD · Python</td></tr>
+          <tr><td>Üretim olgunluğu</td><td class="berk mut">v1.1 (2026) · ~1050 test · 10k-gövde kanıtı</td><td class="y">olgun</td><td class="y">AAA kanıtlı</td><td class="y">olgun</td><td class="y">olgun</td><td class="y">robotik std.</td><td class="y">olgun</td></tr>
+          <tr><td>Lisans</td><td class="berk">Kapalı / Ticari</td><td>Apache-2.0</td><td>MIT</td><td>MIT</td><td>Ticari</td><td>Apache-2.0</td><td>Tescilli</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2><span class="num">5</span>Platform &amp; entegrasyon</h2>
+    <p>Tek deterministik çekirdek, <b style="color:#eaf3ff">dört dağıtım yüzeyiyle</b> aynı <code>state_hash</code>'i
+      üretir — masaüstü oyun motorundan tarayıcıya, gömülü C tüketicisine kadar bit-aynı.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="k">C-ABI</div>
+        <div class="t">Kararlı C arayüzü</div>
+        <div class="d">274 sembollük dondurulmuş <code>extern "C"</code> yüzeyi (opak handle, sabit-genişlik tip).
+          Her dile/motora linklenir; ABI kilidi CI'da denetlenir (SemVer 1.1.0).</div>
+      </div>
+      <div class="card">
+        <div class="k">Unreal</div>
+        <div class="t">Tek eklenti</div>
+        <div class="d">C++ köprü başlığı (<code>BerkPhysics.h</code>) — World3, eklemler, sensörler,
+          Featherstone, floating-origin Unreal projesine gömülür.</div>
+      </div>
+      <div class="card">
+        <div class="k">Unity</div>
+        <div class="t">C# bağlama</div>
+        <div class="d">P/Invoke sarmalayıcıları (<code>Native.cs</code>, <code>World3.cs</code>,
+          <code>Articulated.cs</code>, <code>NavBot.cs</code>) — aynı C-ABI üzerinden yönetilen taraf.</div>
+      </div>
+      <div class="card">
+        <div class="k">WASM</div>
+        <div class="t">Tarayıcı / Node</div>
+        <div class="d"><code>wasm-bindgen</code> ile derlenir; fixed-point çekirdek tarayıcıda da
+          bit-aynı çalışır. Bu sitedeki tüm demolar bu yüzeyi kullanır.</div>
+      </div>
+    </div>
+    <div class="pill-row" style="margin-top:14px;">
+      <span class="pill"><b>Tek-çekirdek:</b> tahsis-içermez sıcak yol, WCET-farkında</span>
+      <span class="pill"><b>Çok-çekirdek:</b> opt-in paralel narrowphase + ada-solver — <b>deterministik / bit-aynı</b></span>
+    </div>
+    <p class="mut" style="font-size:0.9rem;">Çoğu motorun paralel yolu determinizmi bozar (iş-parçacığı sırası sonucu
+      değiştirir); Berk'in paralel çözücüsü <b style="color:#cdd6e8">aynı <code>state_hash</code>'i</b> üretir — yani
+      hız <i>ve</i> tekrar-üretilebilirlik aynı anda.</p>
+
+    <h2><span class="num">6</span>Berk DT'nin ayırt edici güçleri</h2>
+    <ul class="clean">
+      <li><b>Determinizm "inşa gereği" (fixed-point).</b> Rakiplerin çoğunun (Rapier/Jolt/Box2D) çapraz-platform
+        determinizmi float + derleyici disiplinine bağlı ve kırılgan; Berk'te kayan-nokta yuvarlama belirsizliği yok.
+        Tek doğrudan eşi (Photon Quantum) kapalı/oyun.</li>
+      <li><b>Fizik + karar + Digital-Twin tek çekirdekte.</b> Hiçbir fizik motorunda gömülü, açıklanabilir karar/otonomi
+        katmanı yok. <code>digital_twin</code> köprüsü fizik durumundan karar üretip geri uygular (kapalı döngü).</li>
+      <li><b>Formal doğrulama (TLA+).</b> Eşzamanlılık modeli milyonlarca durumda ihlal-suz; sektörde nadir.</li>
+      <li><b>Hafif + gömülebilir, dört yüzeyle.</b> Tek çekirdek <b style="color:#eaf3ff">C-ABI · Unreal eklentisi ·
+        Unity (C#) · WASM (tarayıcı)</b> üzerinden tüketilir; hepsi aynı <code>state_hash</code>. Müşteri ürününe
+        linklenebilir, gömülü-uyumlu (no_std hedefi), GPU/ağır altyapı gerektirmez.</li>
+      <li><b>Deterministik çok-çekirdek.</b> Tek-çekirdek (tahsis-içermez, WCET-farkında) <i>ve</i> opt-in paralel
+        narrowphase + ada-solver. Çoğu motorun aksine paralel yol determinizmi <b>bozmaz</b> — bit-aynı sonuç korunur,
+        yani hız ve tekrar-üretilebilirlik birlikte.</li>
+      <li><b>Denetlenebilirlik &amp; replay.</b> Hash-zincirli provenance + record/replay; "neden bu karar" sorusu
+        tekrar-üretilebilir.</li>
+      <li><b>Deterministik algı (yeni).</b> BVH-hızlandırılmış LiDAR/menzil sensörü — tarama çapraz-platform bit-aynı;
+        sim-to-real ve sensör-döngüde replay için kritik. <span class="mut">Bkz. labirent demosu.</span></li>
+      <li><b>Ölçekte kanıtlı determinizm (Temmuz 2026).</b> 10.001 gövdeli sahnede iki FARKLI broadphase (SAP ve BVH)
+        <b style="color:#eaf3ff">bit-aynı <code>state_hash</code></b> üretir; aynı sahnenin bağımsız koşumları tekrarlanabilir.
+        Determinizm garantisi cisim sayısıyla zayıflamaz (<code>tests/scale_10k.rs</code>, tek komutla yeniden üretilebilir).</li>
+      <li><b>Güvenilmeyen-girdi sertleştirmesi (v1.1.0).</b> Snapshot geri yükleme 5 dünya türünde de ATOMİK
+        (bozuk/kesik veri dünyaya dokunmadan reddedilir); 5 hedefli gecelik fuzz kampanyası CI'da; ~1050 test, 0 hata.
+        NaN/sonsuz float'lı düşman geometri bile çökme üretmez (stable CI'da smoke-corpus ile sabit).</li>
+    </ul>
+
+    <h2><span class="num">7</span>Ölçeklenme — heterojen hesap (CPU determinizm + GPU throughput)</h2>
+    <p>Rakipler "ölçek" için determinizmden ödün verir: GPU/çok-çekirdek yolları iş-parçacığı sırasına bağlı
+      olduğundan <b style="color:#cdd6e8">sonuç platforma göre kayar</b>. Berk, ölçeği <b style="color:#eaf3ff">determinizmi
+      bozmadan</b> çözer — işi iki şeride ayırır:</p>
+    <div class="lanes">
+      <div class="lane cpu">
+        <div class="lane-h">CPU şeridi · <span class="y">deterministik</span></div>
+        <div class="lane-b">Sabit-nokta (Fx64) WCET-kritik kontrol: çözücü kararları, temas çözümü, karar/twin döngüsü,
+          <code>state_hash</code>. Tahsis-içermez, sınırlı-süre → <b style="color:#eaf3ff">bit-aynı &amp; sertifikasyon-uyumlu</b>.</div>
+      </div>
+      <div class="lane gpu">
+        <div class="lane-h">GPU şeridi · <span class="p">throughput</span></div>
+        <div class="lane-b">Veri-paralel aşamalar GPU'ya boşaltılır. <b style="color:#eaf3ff">Tamsayı-yalnız GPU yolu
+          donanımda doğrulandı</b> (opt-in): GPU sonucu CPU ile <b style="color:#eaf3ff">bit-aynı</b>
+          (float yok → <code>state_hash</code> değişmez). Her GPU aşaması
+          <b style="color:#eaf3ff">statik WCET üst-sınırıyla</b> tasarlanır (DO-178C / ISO 26262-farkında);
+          kapsam genişlemesi yol haritasındadır.</div>
+      </div>
+    </div>
+    <p>Bu ayrım, BERK'in <b>WCET-farkında GPU derleme altyapısıyla</b> mümkündür.
+      Sonuç: GPU rakiplerinin <i>throughput</i>'una çıkarken, onların kaybettiği <b style="color:#eaf3ff">çapraz-platform
+      bit-aynılığı</b> ve <b style="color:#eaf3ff">analiz-edilebilir zamanlama garantisini</b> korur.</p>
+    <div class="pill-row">
+      <span class="pill"><b>CPU:</b> WCET-kritik, fixed-point, bit-aynı</span>
+      <span class="pill"><b>GPU:</b> veri-paralel, WCET-sınırlı</span>
+      <span class="pill"><b>Tek + çok-çekirdek:</b> opt-in paralel, deterministik</span>
+      <span class="pill"><b>GPU boşaltma:</b> opt-in, deterministik</span>
+    </div>
+    <div class="quote" style="border-left-color:var(--y);">
+      <b style="color:#eaf3ff">Donanımda kanıtlandı:</b> GPU-hızlandırmalı aşamalar CPU ile <b>bit-aynı</b>;
+      orta sınıf bir GPU'da ölçülen <b style="color:var(--y)">~5.6× hızlanma</b>. Aynı parmak-izi tarayıcıda da
+      yeniden üretilir → <b style="color:#eaf3ff">CPU ≡ GPU ≡ tarayıcı</b>. Canlı kanıt:
+      <a class="inline" href="gpu.html">GPU: Üç Beyin demosu →</a> · Hiçbir mevcut GPU fizik motoru bunu yapamaz.</div>
+    <p class="mut" style="font-size:0.9rem;">Özellik kapsamı zaten geniştir (çekirdek + mesh + dışbükey + yumuşak cisim +
+      CCD + buoyancy + PBF akışkan + compound + heightfield + articulated/Featherstone + deterministik sensör +
+      deterministik GPU boşaltma). Kapsam genişlemesi sürüyor.</p>
+    <div class="quote" style="border-left-color:var(--accent2);">
+      <b style="color:#eaf3ff">Bilimsel/endüstriyel genişleme:</b> çift-hassasiyetli sabit-nokta genişletme ·
+      <b>deterministik FEM</b> (malzeme/biyomekanik) · <b>deterministik granüler DEM</b>
+      (toz/ilaç-tableti/madencilik). Hepsi tamsayı → bit-aynı. Determinizm+sertifikasyon arayan
+      MedTech/malzeme nişine köprü.</div>
+
+    <h2><span class="num">8</span>Hedef niş — nerede kazanır</h2>
+    <div class="pill-row">
+      <span class="pill"><b>Lockstep / replay</b> · dağıtık simülasyon</span>
+      <span class="pill"><b>Otonomi/karar denetimi</b> · kaza/olay analizi</span>
+      <span class="pill"><b>Robotik &amp; dijital ikiz</b> · Unreal görseli + Berk determinizmi</span>
+      <span class="pill"><b>Gömülü/kenar</b> · fixed-point + WCET</span>
+    </div>
+    <p>Berk DT ham GPU throughput yarışında değil, <b style="color:#eaf3ff">"tekrar-üretilebilir, açıklanabilir,
+      denetlenebilir karar+fizik"</b> gerektiren alanlarda kazanır.</p>
+
+    <h2><span class="num">9</span>Sonuç</h2>
+    <p>Pazarda determinizm artık birçok motorun hedefi; fark <b>nasıl</b> sağlandığında ve <b>ne ile birlikte
+      geldiğinde</b>. Berk DT, determinizmi float bayraklarıyla değil sabit-noktayla (kırılgan değil, inşa gereği)
+      sağlayan; üstüne açıklanabilir karar/Digital-Twin ve formal doğrulama koyan; hafif ve gömülebilir tek (tescilli)
+      çekirdektir. Olgunluk ve ham ölçek açısından yerleşik motorların gerisindedir, ama
+      <b style="color:#eaf3ff">"deterministik + açıklanabilir + gömülebilir"</b> kesişiminde benzersiz bir konum tutar.</p>
+
+    <div class="disc">Rakip bilgileri kamuya açık dokümantasyon ve duyurulardan derlenmiştir; özellikler sürümle değişebilir.
+      Berk DT değerleri ürün deposundaki otomatik test ve ölçümlere dayanır; teknik durum tespiti (due diligence)
+      kapsamında NDA ile paylaşılır.</div>
+
+    <h3 style="margin-top:34px;">Kaynaklar</h3>
+    <div class="src">
+      Rapier (determinizm): <a href="https://rapier.rs/docs/user_guides/javascript/determinism/">rapier.rs/docs…/determinism</a> ·
+      <a href="https://rapier.rs/">rapier.rs</a><br>
+      Jolt Physics: <a href="https://github.com/jrouwe/JoltPhysics">github.com/jrouwe/JoltPhysics</a> ·
+      <a href="https://github.com/jrouwe/JoltPhysics/discussions/617">determinism tartışması #617</a><br>
+      Photon Quantum (Q48.16): <a href="https://doc.photonengine.com/quantum/current/manual/quantum-ecs/fixed-point">doc.photonengine.com…/fixed-point</a> ·
+      <a href="https://doc.photonengine.com/quantum/current/quantum-intro">quantum-intro</a><br>
+      Box2D: <a href="https://box2d.org/posts/2024/08/determinism/">determinism</a> ·
+      <a href="https://box2d.org/posts/2024/02/solver2d/">Solver2D (TGS/soft)</a><br>
+      MuJoCo: <a href="https://mujoco.org/">mujoco.org</a> ·
+      <a href="https://mujoco.readthedocs.io/">docs</a><br>
+      NVIDIA Omniverse: <a href="https://nvidianews.nvidia.com/news/nvidia-announces-omniverse-real-time-physics-digital-twins-with-industry-software-leaders">Real-Time Physics Digital Twins duyurusu</a><br>
+      Photon Quantum fiyatlama (2026): <a href="https://www.photonengine.com/quantum/pricing">photonengine.com/quantum/pricing</a> ·
+      <a href="https://blog.photonengine.com/multiplayer-pricing-made-simple/">pricing blog</a><br>
+      Havok fiyatlama (≤20M$ bütçeye 50k$/oyun): <a href="https://www.havok.com/pricing/">havok.com/pricing</a> ·
+      <a href="https://www.gamedeveloper.com/programming/25-years-in-havok-unveils-royalty-free-pricing-for-budgets-up-to-20-million">GameDeveloper haberi</a><br>
+      Box3D (30 Haz 2026): <a href="https://byteiota.com/box3d-the-open-source-3d-physics-engine-built-for-games/">duyuru derlemesi</a><br>
+      NVIDIA Newton: <a href="https://developer.nvidia.com/isaac">developer.nvidia.com/isaac</a> · Linux Foundation duyuruları
+    </div>
+  </main>
+
+  <footer>çapraz-platform bit-aynı <span class="badge2">state_hash</span> · Berk Digital Twin · © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.</footer>
+</body>
+</html>

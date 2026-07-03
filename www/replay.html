@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Berk Digital Twin — Replay / Determinizm Müfettişi (3B)</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#161a22; --line:#262c38; --fg:#e6e6e6; --muted:#8b94a6; --accent:#5cc8ff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--fg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    header { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+    header h1 { margin: 0; font-size: 1.02rem; }
+    header h1 a { color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 400; }
+    header p { margin: 5px 0 0; color: var(--muted); font-size: 0.82rem; max-width: 1000px; }
+
+    .main { display: flex; flex: 1; min-height: 0; }
+    #left { flex: 1.15; position: relative; min-width: 0; overflow: hidden; }
+    #left canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+    #right { flex: 0.85; display: flex; flex-direction: column; border-left: 1px solid var(--line); min-width: 360px; }
+
+    .badge { position: absolute; top: 10px; left: 12px; z-index: 4; background: #0f1115cc; border: 1px solid var(--line); border-radius: 8px;
+             padding: 6px 10px; font-size: 0.78rem; color: var(--muted); pointer-events: none; }
+    .badge b { color: var(--fg); }
+
+    .cols { display: flex; flex: 1; min-height: 0; }
+    .col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .col + .col { border-left: 1px solid var(--line); }
+    .col h3 { margin: 0; padding: 10px 12px 8px; font-size: 0.82rem; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+    .col h3 .pill { margin-left: auto; font-size: 0.68rem; color: var(--muted); font-weight: 400; }
+    .col .a { color: #8fd6ff; } .col .b { color: #b9a6ff; }
+    .list { flex: 1; overflow: auto; font-family: ui-monospace, monospace; font-size: 0.72rem; padding: 4px 0; }
+    .hrow { padding: 1px 12px; white-space: pre; color: #8b949e; }
+    .hrow .fn { color: #5a6678; }
+    .hrow.match { color: #3fb950; } .hrow.match .fn { color: #2c7a3f; }
+    .hrow.diff { color: #f85149; background: #2a1416; }
+    .empty { color: #5a6678; padding: 14px 12px; font-style: italic; }
+
+    .bar { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    button { background: #1f6feb; color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-size: 0.92rem; cursor: pointer; }
+    button.ghost { background: #20262f; border: 1px solid var(--line); color: var(--fg); }
+    button:disabled { background: #2a2f38; color: #667; cursor: default; }
+    .status { color: var(--muted); font-size: 0.86rem; }
+    .ok { color: #3fb950; font-weight: 600; } .bad { color: #f85149; font-weight: 600; }
+    #result { font-size: 0.92rem; }
+  </style>
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Berk Digital Twin — Replay / Determinizm Müfettişi (3B) · <a href="index.html">← ana sayfa</a></h1>
+    <p>Solda 4×4 küp bloğu yüksekten bırakılır, zemine çarpıp <b>dağılır</b> (gerçek motor, <code>Fx64</code> sabit-nokta).
+       Her karenin <code>state_hash</code>'i <b>sol çerçeveye</b> (altın iz) kaydedilir. <b>Yeniden koş + doğrula</b> sıfırdan
+       aynı senaryoyu kurup <b>sağ çerçeveyi</b> doldurur; satırlar kare-kare karşılaştırılır — eşleşenler
+       <span class="ok">yeşil</span>. Aynı dinamik yörünge bit-aynı tekrar ederse determinizm kanıtlanır.</p>
+  </header>
+
+  <div class="main">
+    <div id="left">
+      <div class="badge">canlı <b id="frameno">kare 0</b> · <span id="hashlive">—</span></div>
+    </div>
+    <div id="right">
+      <div class="cols">
+        <div class="col">
+          <h3><span class="a">●</span> Altın iz (1. koşu) <span class="pill" id="cntA">0 kare</span></h3>
+          <div class="list" id="colA"><div class="empty">— "Çalıştır + kaydet" ile dolar —</div></div>
+        </div>
+        <div class="col">
+          <h3><span class="b">●</span> Doğrulama (2. koşu) <span class="pill" id="cntB">0 kare</span></h3>
+          <div class="list" id="colB"><div class="empty">— "Yeniden koş + doğrula" ile dolar —</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button id="record" disabled>1) Çalıştır + izi kaydet</button>
+    <button id="verify" class="ghost" disabled>2) Yeniden koş + doğrula</button>
+    <span class="status" id="status">yükleniyor…</span>
+    <span id="result"></span>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import init, { WasmWorld3 } from '../pkg/berk_dt_wasm.js';
+
+    const FRAMES = 360;
+    const DT = 1 / 60;
+    const PAL = [0x5cc8ff, 0xff7a59, 0x9b8cff, 0x4be0a0, 0xffd166, 0xff5fa2];
+
+    // ---- Three sahne ----
+    const left = document.getElementById('left');
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    left.appendChild(renderer.domElement);
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0f1115);
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+    camera.position.set(13, 9, 15);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.target.set(0, 1.2, 0); controls.update();
+    scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x202028, 1.15));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.0); dl.position.set(8, 16, 10); scene.add(dl);
+
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.08 });
+    // zemin (kalıcı)
+    const groundMesh = new THREE.Mesh(new THREE.BoxGeometry(18, 1, 18), new THREE.MeshStandardMaterial({ color: 0x232a38, roughness: 0.95 }));
+    groundMesh.position.y = -0.5; scene.add(groundMesh);
+    const grid = new THREE.GridHelper(18, 18, 0x33405a, 0x222a38); grid.position.y = 0.001; scene.add(grid);
+
+    let cubeMeshes = [];
+    const CUBE_H = 0.45;
+    function rebuildCubeMeshes(n) {
+      for (const m of cubeMeshes) scene.remove(m);
+      cubeMeshes = [];
+      for (let i = 0; i < n; i++) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(2*CUBE_H, 2*CUBE_H, 2*CUBE_H), mat(PAL[i % PAL.length]));
+        scene.add(m); cubeMeshes.push(m);
+      }
+    }
+
+    function resize() { const w = left.clientWidth, h = left.clientHeight; renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+    window.addEventListener('resize', resize);
+
+    // ---- Senaryo: 4×4 küp bloğu, yüksekten, deterministik dışa-saçılma hızıyla ----
+    let world = null, cubeIds = [];
+    function buildScenario() {
+      if (world) world.free();
+      world = new WasmWorld3(0, -10, 0);
+      world.add_box(0, 0, -0.5, 0, 9, 0.5, 9, 1); // zemin (cisim 0, statik)
+      cubeIds = [];
+      let k = 0;
+      for (let ix = 0; ix < 4; ix++) for (let iz = 0; iz < 4; iz++) {
+        const ox = ix - 1.5, oz = iz - 1.5;
+        const id = world.add_box(1, ox * 0.98, 5.4 + (k % 4) * 0.34, oz * 0.98, CUBE_H, CUBE_H, CUBE_H, 1);
+        // Math.random YOK → iki koşu birebir aynı. Merkezden dışa + hafif yukarı fırlatma.
+        world.set_linvel(id, ox * 2.6, 1.4, oz * 2.6);
+        cubeIds.push(id); k++;
+      }
+      rebuildCubeMeshes(cubeIds.length);
+    }
+    function syncMeshes() {
+      const t = world.transforms();
+      for (let i = 0; i < cubeIds.length; i++) {
+        const o = cubeIds[i] * 7;
+        cubeMeshes[i].position.set(t[o], t[o+1], t[o+2]);
+        cubeMeshes[i].quaternion.set(t[o+3], t[o+4], t[o+5], t[o+6]);
+      }
+    }
+
+    // ---- Hash listeleri ----
+    const colA = document.getElementById('colA'), colB = document.getElementById('colB');
+    const cntA = document.getElementById('cntA'), cntB = document.getElementById('cntB');
+    function appendRow(col, f, hash, goldenHash) {
+      const d = document.createElement('div');
+      d.className = 'hrow' + (goldenHash != null ? (hash === goldenHash ? ' match' : ' diff') : '');
+      d.innerHTML = '<span class="fn">k' + String(f).padStart(3, '0') + '</span>  0x' + hash;
+      col.appendChild(d); col.scrollTop = col.scrollHeight;
+    }
+
+    // ---- Koşu motoru (kalıcı render döngüsü; aktif koşu kare-kare ilerler) ----
+    let golden = [], replay = [], firstDiff = -1;
+    let running = null; // { mode, f, arr, col }
+    const recordBtn = document.getElementById('record');
+    const verifyBtn = document.getElementById('verify');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+    const frameno = document.getElementById('frameno');
+    const hashlive = document.getElementById('hashlive');
+
+    function startRun(mode) {
+      buildScenario();
+      const arr = mode === 'record' ? (golden = []) : (replay = []);
+      const col = mode === 'record' ? colA : colB;
+      col.innerHTML = '';
+      if (mode === 'verify') firstDiff = -1;
+      result.innerHTML = '';
+      recordBtn.disabled = true; verifyBtn.disabled = true;
+      running = { mode, f: 0, arr, col };
+    }
+    function finishRun(mode) {
+      syncMeshes();
+      if (mode === 'record') {
+        status.innerHTML = 'altın iz kaydedildi (' + golden.length + ' kare).';
+        recordBtn.disabled = false; verifyBtn.disabled = false;
+        cntA.textContent = golden.length + ' kare';
+      } else {
+        recordBtn.disabled = false; verifyBtn.disabled = false;
+        cntB.textContent = replay.length + ' kare';
+        if (firstDiff === -1)
+          result.innerHTML = '<span class="ok">✓ Determinizm kanıtlandı:</span> ' + replay.length + ' karenin tümü bit-aynı.';
+        else
+          result.innerHTML = '<span class="bad">✗ Ayrışma:</span> ilk fark kare ' + firstDiff + '.';
+        status.textContent = 'doğrulama bitti.';
+      }
+    }
+
+    function loop() {
+      controls.update();
+      if (running) {
+        const r = running;
+        world.step(DT);
+        const h = world.state_hash();
+        r.arr.push(h);
+        syncMeshes();
+        const gh = r.mode === 'verify' ? golden[r.f] : null;
+        if (r.mode === 'verify' && firstDiff === -1 && h !== gh) firstDiff = r.f;
+        appendRow(r.col, r.f, h, gh);
+        frameno.textContent = 'kare ' + r.f;
+        hashlive.textContent = '0x' + h;
+        (r.mode === 'record' ? cntA : cntB).textContent = (r.f + 1) + ' kare';
+        r.f++;
+        if (r.f >= FRAMES) { const m = r.mode; running = null; finishRun(m); }
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(loop);
+    }
+
+    async function main() {
+      await init();
+      resize();
+      buildScenario(); syncMeshes(); // ilk kare görünür
+      loop();
+      recordBtn.disabled = false;
+      status.textContent = 'hazır — "Çalıştır + kaydet" ile başla.';
+      recordBtn.onclick = () => startRun('record');
+      verifyBtn.onclick = () => { if (golden.length) startRun('verify'); };
+    }
+    main();
+  </script>
+</body>
+</html>

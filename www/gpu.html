@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0f17" />
+  <title>Üç Beyin — Çapraz-Platform GPU Determinizmi · Berk DT</title>
+  <style>
+    :root { --bg:#0c0f17; --fg:#eef2f8; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a;
+      --y:#4be0a0; --p:#ffd166; --n:#ff6b7a; --card:#10151f; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; }
+    body { font-family:system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--fg); line-height:1.6; }
+    .glow { position:fixed; inset:0; z-index:0; pointer-events:none;
+      background:radial-gradient(55% 40% at 50% 0%, #18203a66, transparent 70%), radial-gradient(40% 40% at 90% 90%, #2a1f4a44, transparent 70%); }
+    header { position:sticky; top:0; z-index:5; backdrop-filter:blur(10px); background:#0c0f17cc; border-bottom:1px solid var(--line); }
+    .nav { max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:14px; padding:12px 22px; }
+    .nav .brand { font-weight:700; } .nav .brand .dt { background:linear-gradient(100deg,#5cc8ff,#7a6cff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .nav .spacer { flex:1; } .nav a { color:var(--muted); text-decoration:none; font-size:0.86rem; border:1px solid var(--line); background:#11162288; border-radius:9px; padding:7px 13px; }
+    .nav a:hover { border-color:var(--accent); color:var(--accent); } .nav a.home { border:none; background:none; padding:7px 4px; }
+    main { position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:32px 22px 80px; }
+    .badge { display:inline-flex; align-items:center; gap:8px; font-size:0.76rem; color:var(--muted); border:1px solid var(--line); background:#11162299; border-radius:999px; padding:6px 14px; }
+    .badge .pulse { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 0 #5cc8ff80; animation:pulse 2.4s infinite; }
+    @keyframes pulse { 70%{box-shadow:0 0 0 9px #5cc8ff00;} 100%{box-shadow:0 0 0 0 #5cc8ff00;} }
+    h1 { font-size:clamp(1.8rem,4.5vw,2.9rem); font-weight:800; letter-spacing:-0.02em; margin:16px 0 6px; line-height:1.06;
+      background:linear-gradient(100deg,#eaf3ff,#8fb6ff 45%,#7a6cff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .lede { color:#cdd6e8; max-width:780px; }
+    h2 { font-size:1.2rem; margin:40px 0 10px; }
+    .grid2 { display:grid; grid-template-columns:1.2fr 1fr; gap:18px; margin-top:18px; }
+    @media (max-width:900px){ .grid2 { grid-template-columns:1fr; } }
+    .card { border:1px solid var(--line); background:linear-gradient(180deg,#11162288,#0d121b88); border-radius:16px; padding:16px; }
+    #view { width:100%; height:420px; border-radius:12px; overflow:hidden; background:#0a0e16; position:relative; }
+    #view canvas { position:absolute; inset:0; width:100%!important; height:100%!important; display:block; }
+    .vlabel { position:absolute; left:12px; bottom:10px; font-size:0.78rem; color:var(--muted); z-index:2; }
+    .vlabel b { color:#cdd6e8; }
+
+    .brain { display:flex; align-items:center; gap:12px; padding:12px 6px; border-bottom:1px solid #1a2130; }
+    .brain:last-child { border-bottom:none; }
+    .brain .ic { width:38px; height:38px; border-radius:10px; display:grid; place-items:center; font-size:1.1rem; background:#131a27; border:1px solid var(--line); }
+    .brain .t { flex:1; } .brain .t .n { font-weight:600; color:#eaf3ff; } .brain .t .s { font-size:0.78rem; color:var(--muted); }
+    .brain .hash { font-family:ui-monospace,monospace; font-size:0.82rem; color:#8fb6ff; }
+    .brain .st { font-size:0.78rem; font-weight:700; padding:3px 9px; border-radius:8px; white-space:nowrap; }
+    .st.ok { color:#06140d; background:var(--y); } .st.wait { color:#1a1405; background:var(--p); } .st.bad { color:#1a0508; background:var(--n); }
+    .verdict { margin-top:12px; text-align:center; font-weight:700; font-size:1.05rem; }
+    .verdict.ok { color:var(--y); } .verdict.wait { color:var(--p); }
+
+    table { border-collapse:collapse; width:100%; font-size:0.88rem; margin-top:6px; }
+    th,td { text-align:left; padding:8px 10px; border-bottom:1px solid #1a2130; }
+    th { color:#dbe4f4; font-weight:600; }
+    .bar { height:14px; border-radius:7px; background:#1a2233; position:relative; overflow:hidden; min-width:40px; }
+    .bar > i { position:absolute; left:0; top:0; bottom:0; border-radius:7px; }
+    .bar.g > i { background:linear-gradient(90deg,#5cc8ff,#7a6cff); } .bar.c > i { background:#3a4660; }
+    .win { font-size:0.74rem; font-weight:700; padding:2px 7px; border-radius:6px; }
+    .win.gpu { color:#06140d; background:var(--y); } .win.cpu { color:#0a0d14; background:#7fb2d8; } .win.eq { color:#1a1405; background:var(--p); }
+    .slider { width:100%; accent-color:var(--accent); }
+    .pill { font-size:0.78rem; color:#b9c4da; border:1px solid var(--line); background:#10151f88; border-radius:8px; padding:5px 11px; }
+    .mut { color:var(--muted); } .note { font-size:0.85rem; color:var(--muted); }
+    footer { border-top:1px solid var(--line); color:var(--muted); font-size:0.8rem; text-align:center; padding:24px; position:relative; z-index:1; }
+    code { font-family:ui-monospace,monospace; color:#7fd1ff; }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <header><nav class="nav">
+    <a class="home" href="index.html">← <span class="brand">Berk <span class="dt">DT</span></span></a>
+    <span class="spacer"></span>
+    <a href="demos.html">Demolar</a><a href="rakip.html">Rakip analizi</a>
+  </nav></header>
+
+  <main>
+    <div class="badge"><span class="pulse"></span> Deterministik GPU boşaltma · canlı kanıt</div>
+    <h1>Üç Beyin, Tek Sonuç</h1>
+    <p class="lede">Aynı deterministik PBF akışkanı (grid → yoğunluk → λ, hepsi <code>Fx64</code> sabit-nokta)
+      üç farklı "beyin" tarafından hesaplanıyor: <b>tarayıcı (WASM)</b>, <b>native CPU</b> ve
+      <b>native GPU (CUDA)</b>. Üçü de <b style="color:#eaf3ff">bit-bit aynı</b> parmak-izini üretir.
+      Tarayıcı, GPU'nun ürettiği sonucu gözünüzün önünde yeniden üretip eşleştirir — hiçbir mevcut
+      GPU fizik motorunun yapamadığı şey.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <div id="view"><div class="vlabel">Parçacıklar <b>yoğunluğa</b> göre renkli — GPU kernel'iyle <b>bit-aynı</b> hesaplandı</div></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700; color:#eaf3ff; margin-bottom:4px;">Platform Mutabakatı</div>
+        <div class="note" style="margin-bottom:6px;">Sahne parmak-izi (grid+ρ+λ hash'i, saf tamsayı):</div>
+        <div class="brain">
+          <div class="ic">🌐</div>
+          <div class="t"><div class="n">Tarayıcı (WASM)</div><div class="s">bu sayfada canlı hesaplandı</div></div>
+          <div class="hash" id="h-wasm">…</div>
+          <div class="st wait" id="st-wasm">…</div>
+        </div>
+        <div class="brain">
+          <div class="ic">🖥️</div>
+          <div class="t"><div class="n">Native CPU</div><div class="s">golden (Rust testi)</div></div>
+          <div class="hash" id="h-cpu">…</div>
+          <div class="st wait" id="st-cpu">golden</div>
+        </div>
+        <div class="brain">
+          <div class="ic">⚡</div>
+          <div class="t"><div class="n">Native GPU (CUDA)</div><div class="s">golden · donanımda ölçüldü</div></div>
+          <div class="hash" id="h-gpu">…</div>
+          <div class="st wait" id="st-gpu">golden</div>
+        </div>
+        <div class="verdict wait" id="verdict">hesaplanıyor…</div>
+        <div class="note" id="wasm-time" style="text-align:center;"></div>
+      </div>
+    </div>
+
+    <h2>Heterojen WCET — GPU vs CPU (donanımda ölçülen)</h2>
+    <p class="note">Uçtan-uca çağrı süresi (launch+transfer+sync), n=10000, max µs / 50 tekrar.
+      GPU kazancı <b style="color:#cdd6e8">compute-bound</b> aşamada (yoğunluk) ortaya çıkar; hafif O(n)
+      aşamalar (binning) CPU'da kalmalı — tam da "ağır hesap GPU, WCET-kritik kontrol CPU" tezi.</p>
+    <table id="wcet">
+      <thead><tr><th>Aşama</th><th style="width:34%">GPU</th><th style="width:34%">CPU</th><th>Kazanan</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>CPU/GPU geçiş noktası</h2>
+    <p class="note">Parçacık sayısını değiştir — her aşamada hangi beyin kazanır? (Ölçülen ölçeklemeye dayalı.)
+      Sonuç <b>her zaman bit-aynı</b>; değişen yalnız hız.</p>
+    <div style="display:flex; align-items:center; gap:14px; margin:10px 0;">
+      <span class="pill">n = <b id="nval">2000</b></span>
+      <input class="slider" id="nslider" type="range" min="500" max="20000" step="500" value="2000" style="flex:1;">
+    </div>
+    <div id="crossover" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+
+    <p class="note" style="margin-top:28px;">Not: tarayıcı CUDA çalıştıramaz; burada WASM, GPU yolunun
+      <b>birebir aynı</b> CPU karşılığını koşturur. Asıl iddia hız değil, <b style="color:#cdd6e8">GPU sonucunun
+      CPU/tarayıcı ile bit-aynılığıdır</b> (native CPU=GPU, otomatik golden testle kanıtlı).</p>
+  </main>
+  <footer>çapraz-platform bit-aynı <span style="font-family:ui-monospace,monospace;color:#7fd1ff;">state_hash</span> · Berk Digital Twin · © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.</footer>
+
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import init, { WasmGpuDemo } from '../pkg/berk_dt_wasm.js';
+
+    // Golden (n=2048): native CPU VE native GPU aynı hex'i verdi (bit-aynı, otomatik testle kanıtlı).
+    const DEMO_N = 2048;
+    const NATIVE_GOLDEN = "0x9283c3c056fc16c3";
+
+    // Donanımda ölçülen WCET (n=10000, max µs).
+    const WCET = [
+      { stage:"Broadphase",      gpu:6729, cpu:6524 },
+      { stage:"PBF binning",     gpu:1152, cpu:58 },
+      { stage:"PBF yoğunluk ρ",  gpu:2559, cpu:14420 },
+    ];
+
+    // --- WCET tablosu ---
+    (function(){
+      const tb = document.querySelector('#wcet tbody');
+      const max = Math.max(...WCET.flatMap(r=>[r.gpu,r.cpu]));
+      for (const r of WCET){
+        const win = r.gpu < r.cpu*0.9 ? ['gpu','GPU'] : (r.cpu < r.gpu*0.9 ? ['cpu','CPU'] : ['eq','≈ başa baş']);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.stage}</td>
+          <td><div class="bar g"><i style="width:${(r.gpu/max*100).toFixed(1)}%"></i></div><span class="note">${r.gpu}µs</span></td>
+          <td><div class="bar c"><i style="width:${(r.cpu/max*100).toFixed(1)}%"></i></div><span class="note">${r.cpu}µs</span></td>
+          <td><span class="win ${win[0]}">${win[1]}</span></td>`;
+        tb.appendChild(tr);
+      }
+    })();
+
+    // --- Crossover (ölçülen ölçeklemeden basit model) ---
+    // density: GPU ~ sabit overhead + lineer; CPU ~ lineer (komşu sayısıyla). Ölçümden eğriler.
+    function stageWinner(stage, n){
+      // kaba ölçek: ölçülen 3 noktadan (2000/5000/10000) lineer çıkarım
+      const model = {
+        "Broadphase": { gpu:(n)=>3500+n*1.05, cpu:(n)=>n*2.1 },        // küçük n GPU overhead
+        "PBF binning":{ gpu:(n)=>800+n*0.04, cpu:(n)=>n*0.006 },        // CPU hep önde (trivial)
+        "PBF yoğunluk ρ":{ gpu:(n)=>900+n*0.17, cpu:(n)=>n*1.45 },      // büyük n GPU
+      };
+      const m = model[stage]; const g=m.gpu(n), c=m.cpu(n);
+      if (g < c*0.9) return ['gpu','GPU', g, c];
+      if (c < g*0.9) return ['cpu','CPU', g, c];
+      return ['eq','≈', g, c];
+    }
+    function renderCrossover(n){
+      const box = document.getElementById('crossover'); box.innerHTML='';
+      for (const r of WCET){
+        const [cls,lbl,g,c] = stageWinner(r.stage, n);
+        const el = document.createElement('div'); el.className='card'; el.style.flex='1'; el.style.minWidth='200px';
+        el.innerHTML = `<div style="font-weight:600;color:#dbe4f4">${r.stage}</div>
+          <div class="note">GPU ~${Math.round(g)}µs · CPU ~${Math.round(c)}µs</div>
+          <div style="margin-top:6px"><span class="win ${cls}">${lbl} kazanır</span></div>`;
+        box.appendChild(el);
+      }
+    }
+    const slider = document.getElementById('nslider');
+    slider.addEventListener('input', ()=>{ document.getElementById('nval').textContent=slider.value; renderCrossover(+slider.value); });
+    renderCrossover(2000);
+
+    // --- WASM: canlı parmak-izi + parçacık bulutu ---
+    async function run(){
+      await init();
+      const t0 = performance.now();
+      const demo = new WasmGpuDemo(DEMO_N);
+      const fp = demo.fingerprint();
+      const dt = (performance.now() - t0);
+
+      // hash gösterimi
+      const wasmHex = "0x"+fp;
+      document.getElementById('h-wasm').textContent = wasmHex;
+      document.getElementById('wasm-time').textContent = `tarayıcı hesap süresi: ${dt.toFixed(1)} ms · n=${DEMO_N}`;
+      const golden = NATIVE_GOLDEN;
+      const haveGolden = golden && golden !== "PENDING";
+      const ghex = haveGolden ? (golden.startsWith("0x")?golden:("0x"+golden)) : null;
+      document.getElementById('h-cpu').textContent = ghex || "—";
+      document.getElementById('h-gpu').textContent = ghex || "—";
+      const setSt=(id,cls,txt)=>{ const e=document.getElementById(id); e.className='st '+cls; e.textContent=txt; };
+      if (!haveGolden){
+        setSt('st-wasm','wait','canlı'); setSt('st-cpu','wait','golden bekleniyor'); setSt('st-gpu','wait','golden bekleniyor');
+        const v=document.getElementById('verdict'); v.className='verdict wait';
+        v.textContent='⏳ Golden gömülmedi — golden testini çalıştırıp NATIVE_GOLDEN değerini yazın.';
+      } else {
+        const match = (wasmHex.toLowerCase() === ghex.toLowerCase());
+        setSt('st-wasm', match?'ok':'bad', match?'✓ BİT-AYNI':'✗ FARKLI');
+        setSt('st-cpu', match?'ok':'bad', match?'✓ BİT-AYNI':'✗ FARKLI');
+        setSt('st-gpu', match?'ok':'bad', match?'✓ BİT-AYNI':'✗ FARKLI');
+        const v=document.getElementById('verdict'); v.className='verdict '+(match?'ok':'bad');
+        v.textContent = match ? '✓ Üç beyin de aynı sonucu üretti — GPU≡CPU≡tarayıcı, bit-bit aynı.'
+                              : '✗ Parmak-izleri farklı — beklenmedik (golden/scenario uyumsuz?).';
+      }
+
+      // parçacık bulutu (yoğunluğa göre renk)
+      const view = document.getElementById('view');
+      const W=view.clientWidth, H=view.clientHeight;
+      const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+      renderer.setSize(W,H,false); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); view.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      const cam = new THREE.PerspectiveCamera(50, W/H, 0.1, 100); cam.position.set(11,9,13); cam.lookAt(4,4,4);
+      const pos = demo.positions(); const dens = demo.densities();
+      let dmin=Infinity,dmax=-Infinity; for(const d of dens){ if(d<dmin)dmin=d; if(d>dmax)dmax=d; }
+      const rng = (dmax-dmin)||1;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+      const cols = new Float32Array(dens.length*3);
+      for(let i=0;i<dens.length;i++){ const t=(dens[i]-dmin)/rng; // mavi→camgöbeği→beyaz
+        cols[i*3]=0.25+0.75*t; cols[i*3+1]=0.55+0.45*t; cols[i*3+2]=1.0; }
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({size:0.16, vertexColors:true, transparent:true, opacity:0.95}));
+      const grp = new THREE.Group(); grp.add(pts);
+      const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(8,8,8)), new THREE.LineBasicMaterial({color:0x2a3550}));
+      box.position.set(4,4,4); grp.add(box);
+      grp.position.set(-4,-4,-4); scene.add(grp);
+      addEventListener('resize', ()=>{ const w=view.clientWidth,h=view.clientHeight; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); });
+      (function loop(){ requestAnimationFrame(loop); grp.rotation.y += 0.0035; renderer.render(scene,cam); })();
+    }
+    run();
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "berk-dt-wasm",
+  "type": "module",
+  "description": "WebAssembly bindings + demo for the Berk Digital Twin deterministic physics core.",
+  "version": "1.0.0",
+  "license": "LicenseRef-Proprietary",
+  "files": [
+    "berk_dt_wasm_bg.wasm",
+    "berk_dt_wasm.js",
+    "berk_dt_wasm.d.ts"
+  ],
+  "main": "berk_dt_wasm.js",
+  "types": "berk_dt_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

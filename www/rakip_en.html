@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0f17" />
+  <title>Competitive Analysis — Berk Digital Twin</title>
+  <style>
+    :root { --bg:#0c0f17; --fg:#eef2f8; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a;
+      --card:#10151f; --y:#4be0a0; --p:#ffd166; --n:#ff6b7a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--fg);
+      line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .glow { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(55% 40% at 50% 0%, #18203a66, transparent 70%),
+                  radial-gradient(40% 40% at 90% 90%, #2a1f4a44, transparent 70%); }
+    header { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(10px);
+      background: #0c0f17cc; border-bottom: 1px solid var(--line); }
+    .nav { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 14px; padding: 12px 22px; }
+    .nav .brand { font-weight: 700; letter-spacing: -0.01em; }
+    .nav .brand .dt { background: linear-gradient(100deg, #5cc8ff, #7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .nav .spacer { flex: 1; }
+    .nav a { color: var(--muted); text-decoration: none; font-size: 0.86rem; border: 1px solid var(--line);
+      background: #11162288; border-radius: 9px; padding: 7px 13px; transition: border-color .15s, color .15s; }
+    .nav a:hover { border-color: var(--accent); color: var(--accent); }
+    .nav a.home { border: none; background: none; padding: 7px 4px; }
+    main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 40px 22px 90px; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.76rem; color: var(--muted);
+      border: 1px solid var(--line); background: #11162299; border-radius: 999px; padding: 6px 14px; }
+    .badge .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 #5cc8ff80; animation: pulse 2.4s infinite; }
+    @keyframes pulse { 70% { box-shadow: 0 0 0 9px #5cc8ff00; } 100% { box-shadow: 0 0 0 0 #5cc8ff00; } }
+    h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -0.02em; margin: 18px 0 6px; line-height: 1.05;
+      background: linear-gradient(100deg, #eaf3ff, #8fb6ff 45%, #7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { color: #cdd6e8; font-size: 1.08rem; max-width: 760px; }
+    h2 { font-size: 1.35rem; margin: 52px 0 6px; letter-spacing: -0.01em; }
+    h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 8px; }
+    h3 { font-size: 1.04rem; margin: 26px 0 4px; color: #dbe4f4; }
+    p { color: #c2cce0; }
+    a.inline { color: var(--accent); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+    .pill { font-size: 0.78rem; color: #b9c4da; border: 1px solid var(--line); background: #10151f88; border-radius: 8px; padding: 5px 11px; }
+    .pill b { color: var(--accent); font-weight: 600; }
+    .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
+    @media (max-width: 640px) { .lanes { grid-template-columns: 1fr; } }
+    .lane { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; background: #0d121b88; }
+    .lane.cpu { border-color: #2b5a44; box-shadow: inset 0 0 0 1px #1c3a2c44; }
+    .lane.gpu { border-color: #5a4a2b; box-shadow: inset 0 0 0 1px #3a2c1c44; }
+    .lane-h { font-weight: 700; font-size: 1.02rem; color: #eaf3ff; margin-bottom: 7px; }
+    .lane-b { font-size: 0.92rem; color: #c2cce0; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 18px; }
+    .card { border: 1px solid var(--line); background: linear-gradient(180deg, #11162288, #0d121b88); border-radius: 14px; padding: 18px 18px 16px; }
+    .card .k { font-size: 1.5rem; font-weight: 800; color: #eaf3ff; letter-spacing: -0.02em; }
+    .card .t { font-weight: 600; margin: 2px 0 6px; color: #dbe4f4; }
+    .card .d { font-size: 0.9rem; color: var(--muted); }
+    .tablewrap { overflow-x: auto; margin: 16px 0 4px; border: 1px solid var(--line); border-radius: 14px; }
+    table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.9rem; }
+    thead th { text-align: left; background: #131a27; color: #dbe4f4; font-weight: 600; padding: 11px 13px; position: sticky; top: 0;
+      border-bottom: 1px solid var(--line); white-space: nowrap; }
+    thead th.berk { color: #eaf3ff; background: linear-gradient(180deg, #1c2740, #15203a); }
+    tbody td { padding: 10px 13px; border-bottom: 1px solid #1a2130; vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody td:first-child { color: #dbe4f4; font-weight: 500; }
+    tbody td.berk { background: #121a2a; }
+    tr:hover td { background: #0f1623; }
+    tr:hover td.berk { background: #142036; }
+    .y { color: var(--y); font-weight: 600; } .p { color: var(--p); } .n { color: var(--n); }
+    .mut { color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.82rem; color: var(--muted); margin: 10px 2px 0; }
+    ul.clean { list-style: none; padding: 0; margin: 12px 0; }
+    ul.clean li { position: relative; padding: 9px 0 9px 26px; border-bottom: 1px solid #161d2b; color: #c8d2e6; }
+    ul.clean li:before { content: "▸"; color: var(--accent); position: absolute; left: 4px; top: 9px; }
+    ul.clean li b { color: #eaf3ff; }
+    .quote { border-left: 3px solid var(--accent2); background: #11162244; padding: 14px 18px; border-radius: 0 12px 12px 0; margin: 18px 0; color: #d6deee; }
+    .src { font-size: 0.82rem; color: var(--muted); }
+    .src a { color: #8fb6ff; word-break: break-all; }
+    footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; text-align: center; padding: 26px 22px 40px; position: relative; z-index: 1; }
+    footer .badge2 { font-family: ui-monospace, monospace; color: #7fd1ff; }
+    .disc { font-size: 0.82rem; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <header>
+    <nav class="nav">
+      <a class="home" href="en.html">← <span class="brand">Berk <span class="dt">DT</span></span></a>
+      <span class="spacer"></span>
+      <a href="demos.html">Demos</a>
+      <a href="gpu.html">GPU: Three Brains</a>
+      <a href="rakip.html">🇹🇷 Türkçe</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="badge"><span class="pulse"></span> Competitive Analysis · updated with a July 2026 market scan</div>
+    <h1>Competitive Analysis</h1>
+    <p class="lede">A comparison of Berk Digital Twin against deterministic physics engines, robotics/digital-twin
+      simulators, and higher-level digital-twin platforms. Competitor data is from public documentation; Berk figures
+      are measured/tested values from this repository.</p>
+
+    <h2><span class="num">1</span>Positioning</h2>
+    <p>Berk's distinguishing thesis: <b style="color:#eaf3ff">by-construction (fixed-point) cross-platform bit-identical
+      determinism + an integrated, explainable decision / Digital-Twin layer + formal verification</b>, in a single
+      proprietary/commercial core. It joins two ends of the market:</p>
+    <div class="cards">
+      <div class="card">
+        <div class="t">Physics engines</div>
+        <div class="d">Box2D, Rapier, Jolt, PhysX — strong physics but <b style="color:#cdd6e8">physics only</b>;
+          no decision/twin layer, and determinism is mostly float + compiler flags (fragile).</div>
+      </div>
+      <div class="card">
+        <div class="t">Digital-twin platforms</div>
+        <div class="d">NVIDIA Omniverse, Azure Digital Twins — high-level visualization/IoT, but no
+          <b style="color:#cdd6e8">deterministic cross-platform core</b> and no embeddable-lightweight promise.</div>
+      </div>
+      <div class="card" style="border-color:#2a3a55;">
+        <div class="t" style="color:#eaf3ff;">Berk DT — the intersection</div>
+        <div class="d">Fixed-point determinism <i>plus</i> a decision/twin layer <i>plus</i> formal verification, in a
+          single lightweight embeddable core.</div>
+      </div>
+    </div>
+    <div class="pill-row" style="margin-top:16px;">
+      <span class="pill"><b>Digital twin market:</b> ~$34-49B in 2026 · 31-41% CAGR</span>
+      <span class="pill"><b>Game engines:</b> ~$3.9B in 2026 → ~$10.3B in 2034</span>
+      <span class="pill"><b>Netcode middleware:</b> $1.37B (2024) → ~$3.9B (2033)</span>
+      <span class="pill"><b>Simulation software:</b> ~$18.4B (2025) · 11.7% CAGR</span>
+    </div>
+    <p class="mut" style="font-size:0.85rem;">Market figures from a July 2026 scan (Fortune BI, Grand View, Precedence, Dataintelo, Insight Partners); ranges vary by firm.</p>
+
+    <h2><span class="num">2</span>Cross-platform deterministic physics engines</h2>
+    <p class="mut" style="font-size:0.9rem;">The closest competitors — <i>how</i> determinism is achieved is the critical difference.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Engine</th><th>Determinism method</th><th>Cross-platform bit-identical?</th><th>License</th><th>Note</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="berk"><b style="color:#eaf3ff">Berk DT</b></td>
+            <td class="berk"><span class="y">Fixed-point Fx64 (Q32.32)</span></td>
+            <td class="berk"><span class="y">Yes — by construction</span><br><span class="mut">independent of IEEE/FMA flags; CI on Win/Linux/macOS x64+arm64</span></td>
+            <td class="berk">Closed / Commercial</td>
+            <td class="berk">+ decision/twin layer, + formal verification</td>
+          </tr>
+          <tr>
+            <td>Rapier <span class="mut">(dimforge)</span></td>
+            <td>Float + <code>enhanced-determinism</code></td>
+            <td><span class="p">Yes, but only on IEEE-754-2008 platforms</span></td>
+            <td>Apache-2.0</td>
+            <td>Mature, Rust; not fixed-point</td>
+          </tr>
+          <tr>
+            <td>Jolt <span class="mut">(jrouwe)</span></td>
+            <td>Float + <code>JPH_CROSS_PLATFORM_DETERMINISTIC</code></td>
+            <td><span class="p">Yes, but requires FMA-off + consistent FP modes</span></td>
+            <td>MIT</td>
+            <td>AAA-proven (Horizon FW, Death Stranding 2), multicore</td>
+          </tr>
+          <tr>
+            <td>Havok Physics</td>
+            <td>Float + in-platform consistency discipline</td>
+            <td><span class="n">No — consistent on the same platform, cross-platform bit-identity not guaranteed</span></td>
+            <td>Commercial — $50,000 one-time, royalty-free for games with ≤$20M budget (2026 model)</td>
+            <td>AAA standard; cannot enter the determinism moat</td>
+          </tr>
+          <tr>
+            <td>Box2D v3 <span class="mut">(E. Catto)</span></td>
+            <td>Float + strict compiler settings (FMA off)</td>
+            <td><span class="p">For the same toolchain; cross-platform fragile</span></td>
+            <td>MIT</td>
+            <td>TGS-Soft solver (Berk's 2D solver is in this class), 2D</td>
+          </tr>
+          <tr>
+            <td>Box3D <span class="mut">(E. Catto — NEW, Jun 30 2026)</span></td>
+            <td>Float (C17); determinism not a primary goal</td>
+            <td><span class="p">Early stage — watch</span></td>
+            <td>MIT</td>
+            <td>Open-source 3D under the Catto brand; may create price pressure, no determinism/decision layer</td>
+          </tr>
+          <tr>
+            <td>Photon Quantum</td>
+            <td><span class="y">Fixed-point (Q48.16)</span></td>
+            <td><span class="y">Yes (fixed-point)</span></td>
+            <td>Commercial SaaS — CCU subscription: 100 CCU free · 200 CCU $95/yr · 500 CCU $125/mo · 2000 CCU $500/mo (2026)</td>
+            <td>Game netcode/ECS focused; <b style="color:#cdd6e8">Unity only</b> (Verified Solution) + its own cloud — Unreal/robotics/air-gapped excluded; not a digital twin</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="quote">Rapier/Jolt/Box2D determinism is built on <b>float</b>; cross-platform bit-identity depends on
+      IEEE-754 conformance + FMA-off + compiler flags, and a compiler/architecture change can silently break it.
+      Berk DT and Photon Quantum use <b>fixed-point</b> → determinism by construction. Of these two fixed-point
+      players, Photon is <i>game-netcode</i> focused; <b style="color:#eaf3ff">Berk DT is a Digital-Twin core</b>
+      (physics + decision + bridge).</div>
+
+    <h2><span class="num">3</span>Robotics / digital-twin simulators</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Tool</th><th>Focus</th><th>Determinism</th><th>License</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="berk"><b style="color:#eaf3ff">Berk DT</b></td>
+            <td class="berk">Deterministic physics + decision + twin</td>
+            <td class="berk"><span class="y">Cross-platform bit-identical (fixed-point)</span></td>
+            <td class="berk">Closed / Commercial</td>
+            <td class="berk">Lightweight, engine-embeddable, FFI/Unreal</td>
+          </tr>
+          <tr>
+            <td>MuJoCo <span class="mut">(DeepMind)</span></td>
+            <td>Robotics/research physics</td>
+            <td><span class="p">Deterministic (same build); float, C</span></td>
+            <td>Apache-2.0</td>
+            <td>Mature robotics standard; no cross-platform bit-identity guarantee</td>
+          </tr>
+          <tr>
+            <td>NVIDIA Isaac/Omniverse</td>
+            <td>Industrial digital twin, RL</td>
+            <td><span class="p">GPU/float; "deterministic" but platform-bound</span></td>
+            <td>Proprietary (Isaac Sim 5.0 open-source, 2025)</td>
+            <td>Massive GPU scale + ray tracing; heavy infrastructure; leads robotics-RL job postings in 2026</td>
+          </tr>
+          <tr>
+            <td>Newton <span class="mut">(NVIDIA+DeepMind+Disney — NEW)</span></td>
+            <td>GPU (Warp/OpenUSD); multi-solver incl. MuJoCo-Warp</td>
+            <td><span class="p">GPU/float; bit-identity not a goal</span></td>
+            <td>Open source (Linux Foundation)</td>
+            <td>Sim-to-real focused; confirms the field's strategic importance — the auditable-run/record gap remains</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mut" style="font-size:0.9rem;">High-level platforms (Omniverse, Azure Digital Twins) are not direct
+      competitors; Berk DT is positioned as a deterministic decision/physics core to embed <i>inside</i> those
+      platforms (or into Unreal).</p>
+
+    <h2><span class="num">4</span>Feature comparison</h2>
+    <div class="legend">
+      <span><span class="y">✅</span> full support</span>
+      <span><span class="p">⚠️</span> partial / conditional</span>
+      <span><span class="n">❌</span> none</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Capability</th><th class="berk">Berk DT</th><th>Rapier</th><th>Jolt</th><th>Box2D v3</th><th>Photon Q.</th><th>MuJoCo</th><th>Omniverse</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Fixed-point determinism</td><td class="berk y">✅</td><td class="n">❌ float</td><td class="n">❌ float</td><td class="n">❌ float</td><td class="y">✅</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Cross-platform bit-identical</td><td class="berk y">✅ by construction</td><td class="p">⚠️ IEEE</td><td class="p">⚠️ flags</td><td class="p">⚠️ fragile</td><td class="y">✅</td><td class="p">⚠️</td><td class="n">❌</td></tr>
+          <tr><td>2D + 3D</td><td class="berk y">✅</td><td class="y">✅</td><td class="y">✅ 3D</td><td class="mut">2D</td><td class="y">✅</td><td class="mut">3D</td><td class="mut">3D</td></tr>
+          <tr><td>Static triangle-mesh collider</td><td class="berk y">✅ BVH</td><td class="y">✅</td><td class="y">✅</td><td class="mut">—</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>General convex (GJK+SAT)</td><td class="berk y">✅ mixed + FFI</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅ 2D</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Soft body / cloth</td><td class="berk y">✅ XPBD 2D/3D</td><td class="y">✅ plugin</td><td class="p">⚠️</td><td class="n">❌</td><td class="p">⚠️</td><td class="p">⚠️</td><td class="y">✅</td></tr>
+          <tr><td>Continuous collision (CCD)</td><td class="berk y">✅ opt-in 3D+2D</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅ 2D</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Buoyancy</td><td class="berk y">✅ opt-in</td><td class="p">⚠️</td><td class="y">✅</td><td class="p">⚠️</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Fluid (PBF particle)</td><td class="berk y">✅ two-way + snapshot</td><td class="p">⚠️</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="y">✅</td></tr>
+          <tr><td>Broadphase (SAP/BVH)</td><td class="berk y">✅ SAP or det. BVH</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Joints (+motor/limit)</td><td class="berk y">✅ + Featherstone ABA</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+          <tr><td>Deterministic sensor (LiDAR)</td><td class="berk y">✅ BVH-fast, bit-identical</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">⚠️</td><td class="y">✅ GPU</td></tr>
+          <tr><td>Decision / Digital-Twin layer</td><td class="berk y">✅ embedded</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">partial</td></tr>
+          <tr><td>Explainability / provenance</td><td class="berk y">✅</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Formal verification (TLA+)</td><td class="berk y">✅</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Snapshot + rollback netcode</td><td class="berk y">✅ GGPO-style</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="y">✅</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Divergence debugger</td><td class="berk y">✅ +CLI</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">⚠️</td><td class="n">❌</td><td class="n">❌</td></tr>
+          <tr><td>Allocation-free hot path</td><td class="berk y">✅ proven</td><td class="p">⚠️</td><td class="y">✅</td><td class="p">⚠️</td><td class="y">✅</td><td class="p">⚠️</td><td class="mut">—</td></tr>
+          <tr><td>Single + multicore <span class="mut">(deterministic)</span></td><td class="berk y">✅ single+multi, bit-identical (opt-in)</td><td class="p">⚠️ partial, non-det.</td><td class="p">⚠️ multicore, non-det.</td><td class="n">❌ single-thr.</td><td class="n">❌ single-thr.</td><td class="n">❌ single-thr.</td><td class="p">⚠️ GPU, non-det.</td></tr>
+          <tr><td>GPU acceleration <span class="mut">(WCET-bounded)</span></td><td class="berk y">✅ deterministic (opt-in)</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="n">❌</td><td class="p">⚠️ yes, no WCET</td><td class="p">⚠️ GPU, non-det.</td></tr>
+          <tr><td>Integration / bindings</td><td class="berk y">✅ C-ABI · Unreal · Unity · WASM</td><td class="y">Rust · JS/WASM</td><td>C++</td><td>C</td><td>Unity / C#</td><td>C · Python</td><td>USD · Python</td></tr>
+          <tr><td>Production maturity</td><td class="berk mut">v1.1 (2026) · ~1050 tests · 10k-body proof</td><td class="y">mature</td><td class="y">AAA-proven</td><td class="y">mature</td><td class="y">mature</td><td class="y">robotics std.</td><td class="y">mature</td></tr>
+          <tr><td>License</td><td class="berk">Closed / Commercial</td><td>Apache-2.0</td><td>MIT</td><td>MIT</td><td>Commercial</td><td>Apache-2.0</td><td>Proprietary</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2><span class="num">5</span>Platform &amp; integration</h2>
+    <p>A single deterministic core produces the same <code>state_hash</code> across <b style="color:#eaf3ff">four
+      distribution surfaces</b> — bit-identical from desktop game engine to browser to embedded C consumer.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="k">C-ABI</div>
+        <div class="t">Stable C interface</div>
+        <div class="d">A frozen 274-symbol <code>extern "C"</code> surface (opaque handles, fixed-width types).
+          Links to any language/engine; the ABI lock is enforced in CI (SemVer 1.1.0).</div>
+      </div>
+      <div class="card">
+        <div class="k">Unreal</div>
+        <div class="t">Single plugin</div>
+        <div class="d">A C++ bridge header (<code>BerkPhysics.h</code>) — World3, joints, sensors, Featherstone,
+          floating-origin — embeds into an Unreal project (Win64 · Mac · Linux).</div>
+      </div>
+      <div class="card">
+        <div class="k">Unity</div>
+        <div class="t">C# bindings</div>
+        <div class="d">P/Invoke wrappers (<code>Native.cs</code>, <code>World3.cs</code>,
+          <code>Articulated.cs</code>, <code>NavBot.cs</code>) — the managed side over the same C-ABI.</div>
+      </div>
+      <div class="card">
+        <div class="k">WASM</div>
+        <div class="t">Browser / Node</div>
+        <div class="d">Built with <code>wasm-bindgen</code>; the fixed-point core runs bit-identically in the
+          browser too. Every demo on this site uses this surface.</div>
+      </div>
+    </div>
+    <div class="pill-row" style="margin-top:14px;">
+      <span class="pill"><b>Single-core:</b> allocation-free hot path, WCET-aware</span>
+      <span class="pill"><b>Multicore:</b> opt-in parallel narrowphase + island solver — <b>deterministic / bit-identical</b></span>
+    </div>
+    <p class="mut" style="font-size:0.9rem;">Most engines' parallel path breaks determinism (thread order changes the
+      result); Berk's parallel solver produces <b style="color:#cdd6e8">the same <code>state_hash</code></b> — so speed
+      <i>and</i> reproducibility at once.</p>
+
+    <h2><span class="num">6</span>Berk DT's distinctive strengths</h2>
+    <ul class="clean">
+      <li><b>Determinism "by construction" (fixed-point).</b> Most competitors' (Rapier/Jolt/Box2D) cross-platform
+        determinism relies on float + compiler discipline and is fragile; Berk has no floating-point rounding
+        ambiguity. Its only direct peer (Photon Quantum) is closed/game.</li>
+      <li><b>Physics + decision + Digital-Twin in one core.</b> No physics engine has an embedded, explainable
+        decision/autonomy layer. The <code>digital_twin</code> bridge produces decisions from physics state and
+        applies them back (closed loop).</li>
+      <li><b>Operational layer — Shadow Twin + Advisor (Sentinel edition).</b> Determinism isn't only an engineering
+        feature but a <i>product vertical</i>: a deterministic <b style="color:#eaf3ff">Shadow Twin</b> running beside
+        the real system on the same inputs tracks the residual between prediction and measurement and catches an
+        anomaly (wear/fault/command injection) on the first frame — the threshold can be tight because simulation
+        noise is zero-bit. The <b style="color:#eaf3ff">Advisor</b> turns a what-if tree forked from the live state
+        into hash-addressed, reproducible COAs. A space float-based engines cannot structurally enter (cyber-physical
+        integrity, predictive maintenance, route planning).</li>
+      <li><b>Formal verification (TLA+).</b> The concurrency model is violation-free over millions of states; rare in
+        the sector.</li>
+      <li><b>Lightweight + embeddable, four surfaces.</b> A single core consumed via <b style="color:#eaf3ff">C-ABI ·
+        Unreal plugin · Unity (C#) · WASM (browser)</b>; all the same <code>state_hash</code>. Links into a customer
+        product, embedded-friendly (no_std target), requires no GPU/heavy infrastructure.</li>
+      <li><b>Deterministic multicore.</b> Single-core (allocation-free, WCET-aware) <i>and</i> opt-in parallel
+        narrowphase + island solver. Unlike most engines the parallel path <b>does not</b> break determinism —
+        bit-identical results are preserved, so speed and reproducibility together.</li>
+      <li><b>Auditability &amp; replay.</b> Hash-chained provenance + record/replay; "why this decision" is
+        reproducible.</li>
+      <li><b>Deterministic perception (new).</b> A BVH-accelerated LiDAR/range sensor — the scan is cross-platform
+        bit-identical; critical for sim-to-real and sensor-in-the-loop replay. <span class="mut">See the maze demo.</span></li>
+      <li><b>Determinism proven at scale (July 2026).</b> On a 10,001-body scene, two DIFFERENT broadphases (SAP and
+        BVH) produce a <b style="color:#eaf3ff">bit-identical <code>state_hash</code></b>; independent runs of the same
+        scene are repeatable. The determinism guarantee does not weaken with body count
+        (<code>tests/scale_10k.rs</code>, reproducible in one command).</li>
+      <li><b>Untrusted-input hardening (v1.1.0).</b> Snapshot restore is ATOMIC across all 5 world kinds
+        (corrupt/truncated data is rejected without touching the world); a 5-target nightly fuzz campaign in CI; ~1050
+        tests, 0 failures. Even NaN/infinite-float hostile geometry produces no crash (fixed on stable CI via a
+        smoke-corpus).</li>
+    </ul>
+
+    <h2><span class="num">7</span>Scaling — heterogeneous compute (CPU determinism + GPU throughput)</h2>
+    <p>Competitors trade away determinism for "scale": since GPU/multicore paths depend on thread order,
+      <b style="color:#cdd6e8">the result drifts across platforms</b>. Berk solves scale <b style="color:#eaf3ff">without
+      breaking determinism</b> — it splits work into two lanes:</p>
+    <div class="lanes">
+      <div class="lane cpu">
+        <div class="lane-h">CPU lane · <span class="y">deterministic</span></div>
+        <div class="lane-b">Fixed-point (Fx64) WCET-critical control: solver decisions, contact resolution, the
+          decision/twin loop, <code>state_hash</code>. Allocation-free, bounded-time →
+          <b style="color:#eaf3ff">bit-identical &amp; certification-friendly</b>.</div>
+      </div>
+      <div class="lane gpu">
+        <div class="lane-h">GPU lane · <span class="p">throughput</span></div>
+        <div class="lane-b">Data-parallel stages are offloaded to the GPU. <b style="color:#eaf3ff">The integer-only GPU
+          path is verified on hardware</b> (opt-in): the GPU result is <b style="color:#eaf3ff">bit-identical</b> to
+          the CPU (no float → <code>state_hash</code> unchanged). Each GPU stage is designed with a
+          <b style="color:#eaf3ff">static WCET upper bound</b> (DO-178C / ISO 26262-aware); scope expansion is on the
+          roadmap.</div>
+      </div>
+    </div>
+    <p>This split is enabled by BERK's <b>WCET-aware GPU build infrastructure</b>. The result: it reaches the GPU
+      competitors' <i>throughput</i> while keeping the <b style="color:#eaf3ff">cross-platform bit-identity</b> and
+      <b style="color:#eaf3ff">analyzable timing guarantee</b> they lose.</p>
+    <div class="pill-row">
+      <span class="pill"><b>CPU:</b> WCET-critical, fixed-point, bit-identical</span>
+      <span class="pill"><b>GPU:</b> data-parallel, WCET-bounded</span>
+      <span class="pill"><b>Single + multicore:</b> opt-in parallel, deterministic</span>
+      <span class="pill"><b>GPU offload:</b> opt-in, deterministic</span>
+    </div>
+    <div class="quote" style="border-left-color:var(--y);">
+      <b style="color:#eaf3ff">Proven on hardware:</b> GPU-accelerated stages are <b>bit-identical</b> to the CPU; a
+      <b style="color:var(--y)">~5.6× speedup</b> measured on a mid-range GPU. The same fingerprint is reproduced in
+      the browser too → <b style="color:#eaf3ff">CPU ≡ GPU ≡ browser</b>. Live proof:
+      <a class="inline" href="gpu.html">GPU: Three Brains demo →</a> · no existing GPU physics engine does this.</div>
+    <p class="mut" style="font-size:0.9rem;">Feature coverage is already broad (core + mesh + convex + soft body + CCD +
+      buoyancy + PBF fluid + compound + heightfield + articulated/Featherstone + deterministic sensor + deterministic
+      GPU offload). Scope expansion continues.</p>
+    <div class="quote" style="border-left-color:var(--accent2);">
+      <b style="color:#eaf3ff">Scientific/industrial expansion:</b> double-precision fixed-point extension ·
+      <b>deterministic FEM</b> (materials/biomechanics) · <b>deterministic granular DEM</b>
+      (powder/pharma-tablet/mining). All integer → bit-identical. A bridge to the MedTech/materials niche seeking
+      determinism + certification.</div>
+
+    <h2><span class="num">8</span>Target niche — where it wins</h2>
+    <div class="pill-row">
+      <span class="pill"><b>Lockstep / replay</b> · distributed simulation</span>
+      <span class="pill"><b>Autonomy/decision audit</b> · incident/accident analysis</span>
+      <span class="pill"><b>Robotics &amp; digital twin</b> · Unreal visuals + Berk determinism</span>
+      <span class="pill"><b>Embedded/edge</b> · fixed-point + WCET</span>
+    </div>
+    <p>Berk DT does not win the raw GPU-throughput race; it wins where <b style="color:#eaf3ff">"reproducible,
+      explainable, auditable decision+physics"</b> is required.</p>
+
+    <h2><span class="num">9</span>Conclusion</h2>
+    <p>Determinism is now the goal of many engines; the difference is <b>how</b> it is achieved and <b>what it comes
+      with</b>. Berk DT provides determinism via fixed-point (not fragile compiler flags, but by construction), adds an
+      explainable decision/Digital-Twin layer and formal verification on top, in a single lightweight, embeddable
+      (proprietary) core. It trails established engines in maturity and raw scale, but holds a unique position at the
+      intersection of <b style="color:#eaf3ff">"deterministic + explainable + embeddable."</b></p>
+
+    <div class="disc">Competitor information is compiled from public documentation and announcements; features may change
+      by version. Berk DT figures rest on the product repository's automated tests and measurements; detailed evidence
+      is shared under NDA as part of technical due diligence.</div>
+
+    <h3 style="margin-top:34px;">Sources</h3>
+    <div class="src">
+      Rapier (determinism): <a href="https://rapier.rs/docs/user_guides/javascript/determinism/">rapier.rs/docs…/determinism</a> ·
+      <a href="https://rapier.rs/">rapier.rs</a><br>
+      Jolt Physics: <a href="https://github.com/jrouwe/JoltPhysics">github.com/jrouwe/JoltPhysics</a> ·
+      <a href="https://github.com/jrouwe/JoltPhysics/discussions/617">determinism discussion #617</a><br>
+      Photon Quantum (Q48.16): <a href="https://doc.photonengine.com/quantum/current/manual/quantum-ecs/fixed-point">doc.photonengine.com…/fixed-point</a> ·
+      <a href="https://doc.photonengine.com/quantum/current/quantum-intro">quantum-intro</a><br>
+      Box2D: <a href="https://box2d.org/posts/2024/08/determinism/">determinism</a> ·
+      <a href="https://box2d.org/posts/2024/02/solver2d/">Solver2D (TGS/soft)</a><br>
+      MuJoCo: <a href="https://mujoco.org/">mujoco.org</a> ·
+      <a href="https://mujoco.readthedocs.io/">docs</a><br>
+      NVIDIA Omniverse: <a href="https://nvidianews.nvidia.com/news/nvidia-announces-omniverse-real-time-physics-digital-twins-with-industry-software-leaders">Real-Time Physics Digital Twins announcement</a><br>
+      Photon Quantum pricing (2026): <a href="https://www.photonengine.com/quantum/pricing">photonengine.com/quantum/pricing</a> ·
+      <a href="https://blog.photonengine.com/multiplayer-pricing-made-simple/">pricing blog</a><br>
+      Havok pricing ($50k/game for ≤$20M budgets): <a href="https://www.havok.com/pricing/">havok.com/pricing</a> ·
+      <a href="https://www.gamedeveloper.com/programming/25-years-in-havok-unveils-royalty-free-pricing-for-budgets-up-to-20-million">GameDeveloper news</a><br>
+      Box3D (Jun 30 2026): <a href="https://byteiota.com/box3d-the-open-source-3d-physics-engine-built-for-games/">announcement digest</a><br>
+      NVIDIA Newton: <a href="https://developer.nvidia.com/isaac">developer.nvidia.com/isaac</a> · Linux Foundation announcements
+    </div>
+  </main>
+
+  <footer>cross-platform bit-identical <span class="badge2">state_hash</span> · Berk Digital Twin · © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.</footer>
+</body>
+</html>

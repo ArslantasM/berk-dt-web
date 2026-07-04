@@ -4,48 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0c0f17" />
-  <title>LL BERK Yazılım Teknolojileri A.Ş. — Berk Digital Twin</title>
+  <title>Berk DT — Dil Seçin / Choose Language</title>
+  <meta name="description" content="Berk Digital Twin — Kanıtlanabilir Simülasyon Altyapısı / Provable Simulation Infrastructure. Dil seçin / Choose your language." />
   <style>
     :root { --bg:#0c0f17; --fg:#eef2f8; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a; }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
     body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--fg); overflow: hidden; }
-
     #bg { position: fixed; inset: 0; z-index: 0; display: block; }
     .glow { position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background: radial-gradient(60% 50% at 50% 38%, #18203a88, transparent 70%),
-                  radial-gradient(40% 40% at 80% 80%, #2a1f4a55, transparent 70%); }
-
-    #wrap { position: relative; z-index: 2; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px;
-      opacity: 0; transform: translateY(14px); animation: rise 0.9s cubic-bezier(.2,.7,.2,1) 0.15s forwards; }
+      background: radial-gradient(60% 55% at 50% 34%, #18203a99, transparent 70%), radial-gradient(42% 42% at 82% 88%, #2a1f4a66, transparent 70%); }
+    #wrap { position: relative; z-index: 2; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 28px;
+      opacity: 0; transform: translateY(14px); animation: rise 0.9s cubic-bezier(.2,.7,.2,1) 0.1s forwards; }
     @keyframes rise { to { opacity: 1; transform: none; } }
-    body.leaving #wrap { opacity: 0; transform: scale(0.97); transition: opacity .5s, transform .5s; }
 
-    .badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--muted);
-      border: 1px solid var(--line); background: #11162299; border-radius: 999px; padding: 6px 14px; margin-bottom: 22px; }
-    .badge .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 #5cc8ff80; animation: pulse 2s infinite; }
-    @keyframes pulse { 70% { box-shadow: 0 0 0 9px #5cc8ff00; } 100% { box-shadow: 0 0 0 0 #5cc8ff00; } }
+    .company { font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .logo { font-size: clamp(3rem, 12vw, 6.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+      background: linear-gradient(100deg,#eaf3ff,#8fb6ff 42%,#7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .logo .dt { background: linear-gradient(100deg,#5cc8ff,#7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .cat { margin: 14px auto 0; font-size: clamp(0.82rem, 2vw, 1.0rem); color: #cdd6e8; }
+    .pills { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin: 16px auto 0; }
+    .pill { font-size:0.74rem; letter-spacing:0.06em; color:#b9c4da; border:1px solid var(--line); background:#10151f88; border-radius:999px; padding:5px 13px; }
 
-    .company { font-size: 0.92rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-    h1 { margin: 0; font-size: clamp(2.4rem, 7vw, 5rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.02;
-      background: linear-gradient(100deg, #eaf3ff, #8fb6ff 40%, #7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    h1 .dt { background: linear-gradient(100deg, #5cc8ff, #7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .sub { margin: 14px 0 0; font-size: clamp(1rem, 2.2vw, 1.35rem); color: #cdd6e8; font-weight: 600; }
-    .tag { margin: 16px auto 0; max-width: 720px; color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+    .choose { margin: 34px 0 14px; font-size: 0.86rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    .langs { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+    .lang { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; color: var(--fg);
+      width: 210px; padding: 24px 22px; border: 1px solid var(--line); background: #10151fcc; border-radius: 18px;
+      transition: transform .18s cubic-bezier(.2,.7,.2,1), border-color .18s, box-shadow .18s, background .18s; }
+    .lang:hover { transform: translateY(-4px); border-color: var(--accent); background:#131b2acc; box-shadow: 0 18px 44px -18px #5cc8ff66; }
+    .lang .flag { font-size: 2.4rem; line-height: 1; }
+    .lang .name { font-size: 1.35rem; font-weight: 700; }
+    .lang .desc { font-size: 0.8rem; color: var(--muted); }
+    .lang .go { margin-top: 4px; font-size: 0.82rem; color: var(--accent); opacity: 0; transform: translateY(-3px); transition: opacity .18s, transform .18s; }
+    .lang:hover .go { opacity: 1; transform: none; }
 
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 26px auto 0; max-width: 760px; }
-    .chip { font-size: 0.78rem; color: #b9c4da; border: 1px solid var(--line); background: #10151f88; border-radius: 8px; padding: 5px 11px; }
+    .quick { margin-top: 30px; font-size: 0.86rem; }
+    .quick a { color: var(--muted); text-decoration: none; border-bottom: 1px dashed var(--line); padding-bottom: 1px; }
+    .quick a:hover { color: var(--accent); border-color: var(--accent); }
 
-    .cta { margin-top: 34px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-    .enter { font-size: 1.02rem; font-weight: 600; color: #0a0d14; text-decoration: none; border: none; cursor: pointer;
-      background: linear-gradient(100deg, #6fd0ff, #8c7dff); border-radius: 12px; padding: 14px 26px; box-shadow: 0 10px 30px -10px #5cc8ff66;
-      transition: transform .15s, box-shadow .15s; }
-    .enter:hover { transform: translateY(-2px); box-shadow: 0 16px 40px -10px #5cc8ff99; }
-    .ghost { font-size: 1.0rem; color: var(--fg); text-decoration: none; border: 1px solid var(--line); background: #11162288; border-radius: 12px; padding: 14px 22px; }
-    .ghost:hover { border-color: var(--accent); color: var(--accent); }
-
-    footer { position: fixed; bottom: 16px; left: 0; right: 0; z-index: 2; text-align: center; color: var(--muted); font-size: 0.78rem; }
+    footer { position: fixed; bottom: 16px; left: 0; right: 0; z-index: 2; text-align: center; color: var(--muted); font-size: 0.76rem; }
     footer .badge2 { font-family: ui-monospace, monospace; color: #7fd1ff; }
+    @media (max-height: 640px){ footer { position: static; margin-top: 22px; } #wrap { min-height: auto; padding-top: 40px; padding-bottom: 40px; } body { overflow: auto; } }
   </style>
 </head>
 <body>
@@ -53,69 +52,70 @@
   <div class="glow"></div>
 
   <div id="wrap">
-    <div class="badge"><span class="pulse"></span> v1.0 · Deterministik · <code>Fx64</code> sabit-nokta · WASM</div>
     <div class="company">LL BERK Yazılım Teknolojileri A.Ş.</div>
-    <h1>Berk — <span class="dt">Digital Twin</span></h1>
-    <p class="sub">Deterministik İkiz Fizik Motoru</p>
-    <p class="tag">
-      Tüm matematik tamsayı (Q32.32) sabit-noktadır → aynı girdi <b>her platformda ve tarayıcıda bit-aynı</b>
-      sonuç verir. Oyun, robotik ve dijital-ikiz için lockstep/rollback-hazır 2B &amp; 3B fizik.
-    </p>
-    <div class="chips">
-      <span class="chip">2B/3B Rijit</span><span class="chip">Eklem · Motor · Limit</span>
-      <span class="chip">CCD</span><span class="chip">Dışbükey (GJK+SAT)</span><span class="chip">Bileşik Şekiller</span>
-      <span class="chip">PBF Akışkan</span><span class="chip">Batmazlık</span><span class="chip">Heightfield Terrain</span>
-      <span class="chip">Kumaş (XPBD)</span><span class="chip">Snapshot · Rollback</span>
+    <div class="logo">Berk&nbsp;<span class="dt">DT</span></div>
+    <div class="cat">Kanıtlanabilir Simülasyon Altyapısı &nbsp;·&nbsp; Provable Simulation Infrastructure</div>
+    <div class="pills">
+      <span class="pill">Deterministic</span><span class="pill">Auditable</span><span class="pill">Forkable</span>
     </div>
-    <div class="cta">
-      <a class="enter" id="enter" href="demos.html">Demolara Gir →</a>
-      <a class="ghost" href="zaman.html">⏳ Zaman Yolcusu</a>
-      <a class="ghost" href="mutabakat.html">🤝 Hash Mutabakatı</a>
-      <a class="ghost" href="box2d.html">2B mini-demo</a>
-      <a class="ghost" href="replay.html">Determinizm müfettişi</a>
-      <a class="ghost" href="gpu.html">GPU: Üç Beyin</a>
-      <a class="ghost" href="rakip.html">Rakip analizi</a>
-      <a class="ghost" href="demos.html?kiosk=8" title="Fuar/stant modu: 8 sn'de bir otomatik demo">🖥️ Kiosk</a>
+
+    <div class="choose">Dil seçin · Choose language</div>
+    <div class="langs">
+      <a class="lang" href="tr.html" id="tr">
+        <span class="flag">🇹🇷</span>
+        <span class="name">Türkçe</span>
+        <span class="desc">Ana sayfaya gir</span>
+        <span class="go">Devam →</span>
+      </a>
+      <a class="lang" href="en.html" id="en">
+        <span class="flag">🇬🇧</span>
+        <span class="name">English</span>
+        <span class="desc">Enter the site</span>
+        <span class="go">Continue →</span>
+      </a>
+    </div>
+
+    <div class="quick">
+      <a href="demos.html">⚡ Doğrudan canlı demolara git / Skip to live demos →</a>
     </div>
   </div>
 
-  <footer>çapraz-platform bit-aynı <span class="badge2">state_hash</span> · Berk Digital Twin · © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.</footer>
+  <footer>çapraz-platform bit-aynı <span class="badge2">state_hash</span> · © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.</footer>
 
   <script>
-    // Hafif, bağımlılıksız "fizik hissi" arka planı: yumuşak parçacıklar nazikçe sekerek süzülür,
-    // yakın olanlar ince çizgilerle bağlanır (ağ/ikiz estetiği). Gerçek motor demoları galeride.
+    // Diğer sayfalardaki "ağ/ikiz" parçacık efekti — tam ekran.
     const cv = document.getElementById('bg'), ctx = cv.getContext('2d');
     let W, H, parts;
-    const N = 70;
+    const N = 78;
     const rand = (a, b) => a + Math.random() * (b - a);
     function reset(){
       W = cv.width = innerWidth; H = cv.height = innerHeight;
-      parts = Array.from({length: N}, () => ({ x: rand(0,W), y: rand(0,H), vx: rand(-0.25,0.25), vy: rand(-0.25,0.25), r: rand(1.2,3.2) }));
+      parts = Array.from({length: N}, () => ({ x: rand(0,W), y: rand(0,H), vx: rand(-0.24,0.24), vy: rand(-0.24,0.24), r: rand(1.2,3.2) }));
     }
     addEventListener('resize', reset); reset();
     function frame(){
       ctx.clearRect(0,0,W,H);
-      for (const p of parts){
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0 || p.x > W) p.vx *= -1;
-        if (p.y < 0 || p.y > H) p.vy *= -1;
-      }
+      for (const p of parts){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1; }
       ctx.lineWidth = 1;
-      for (let i = 0; i < N; i++) for (let j = i+1; j < N; j++){
-        const a = parts[i], b = parts[j];
-        const dx = a.x-b.x, dy = a.y-b.y, d2 = dx*dx + dy*dy;
-        if (d2 < 130*130){ const al = (1 - Math.sqrt(d2)/130) * 0.16; ctx.strokeStyle = `rgba(120,160,255,${al})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+      for (let i=0;i<N;i++) for (let j=i+1;j<N;j++){
+        const a=parts[i], b=parts[j], dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy;
+        if(d2<140*140){ const al=(1-Math.sqrt(d2)/140)*0.16; ctx.strokeStyle=`rgba(120,160,255,${al})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
       }
-      for (const p of parts){ ctx.fillStyle = 'rgba(140,180,255,0.85)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+      for (const p of parts){ ctx.fillStyle='rgba(140,180,255,0.82)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
       requestAnimationFrame(frame);
     }
     frame();
 
-    document.getElementById('enter').addEventListener('click', (e) => {
-      e.preventDefault();
-      document.body.classList.add('leaving');
-      setTimeout(() => location.href = 'demos.html', 480);
-    });
+    // Son dil tercihini hatırla (yalnız işaretle; otomatik yönlendirme YOK — seçim kullanıcıda).
+    try {
+      const last = localStorage.getItem('berkdt_lang');
+      if (last === 'en' || last === 'tr') {
+        const el = document.getElementById(last);
+        if (el) { el.style.borderColor = 'var(--accent)'; el.querySelector('.desc').textContent += ' · son seçim'; }
+      }
+      document.getElementById('tr').addEventListener('click', ()=>localStorage.setItem('berkdt_lang','tr'));
+      document.getElementById('en').addEventListener('click', ()=>localStorage.setItem('berkdt_lang','en'));
+    } catch(e){}
   </script>
 </body>
 </html>

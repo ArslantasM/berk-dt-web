@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0f17" />
+  <title>Berk DT — Kanıtlanabilir Simülasyon Altyapısı</title>
+  <meta name="description" content="Deterministik, denetlenebilir, çatallanabilir simülasyon. Aynı girdi her makinede bit-aynı sonuç verir; her kararı kanıtlayın." />
+  <style>
+    :root { --bg:#0c0f17; --panel:#10151f; --fg:#eef2f8; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a; --ok:#4be0a0; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html, body { margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .mono { font-family: ui-monospace, Consolas, monospace; }
+    header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px); background: #0c0f17cc; border-bottom: 1px solid var(--line); }
+    .nav { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 11px 22px; }
+    .nav .brand { font-weight: 700; letter-spacing: -0.01em; text-decoration: none; }
+    .nav .brand .dt { background: linear-gradient(100deg,#5cc8ff,#7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .nav .spacer { flex: 1; }
+    .nav a.lnk { color: var(--muted); text-decoration: none; font-size: 0.86rem; padding: 6px 4px; }
+    .nav a.lnk:hover { color: var(--accent); }
+    .nav a.lang { color: var(--muted); text-decoration:none; font-size:0.82rem; border:1px solid var(--line); border-radius:8px; padding:5px 10px; }
+    .nav a.lang:hover { border-color:var(--accent); color:var(--accent); }
+    .nav a.cta { color:#0a0d14; font-weight:600; background: linear-gradient(100deg,#6fd0ff,#8c7dff); border-radius:9px; padding:8px 15px; text-decoration:none; font-size:0.88rem; }
+    @media (max-width: 760px){ .nav a.lnk.hideSm { display:none; } }
+    #hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+    #bg { position: absolute; inset: 0; z-index: 0; display: block; }
+    .glow { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(60% 50% at 50% 30%, #18203a99, transparent 70%), radial-gradient(40% 40% at 85% 90%, #2a1f4a66, transparent 70%); }
+    .hero-in { position: relative; z-index: 2; max-width: 1000px; margin: 0 auto; padding: 90px 22px 78px; text-align: center; }
+    .cat { display:inline-flex; align-items:center; gap:8px; font-size:0.76rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+      border:1px solid var(--line); background:#11162299; border-radius:999px; padding:6px 15px; margin-bottom:26px; }
+    .cat .pulse { width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 #5cc8ff80;animation:pulse 2.2s infinite; }
+    @keyframes pulse { 70%{box-shadow:0 0 0 9px #5cc8ff00;} 100%{box-shadow:0 0 0 0 #5cc8ff00;} }
+    h1 { margin: 0; font-size: clamp(2.5rem, 7vw, 4.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.02;
+      background: linear-gradient(100deg,#eaf3ff,#8fb6ff 45%,#7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-en { margin: 16px auto 0; max-width: 720px; font-size: clamp(1rem,2.3vw,1.3rem); color:#cdd6e8; font-weight:600; }
+    .hero-tag { margin: 18px auto 0; max-width: 680px; color: var(--muted); font-size: 0.98rem; }
+    .pillars { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:30px auto 0; max-width:760px; }
+    .pillar { flex:1 1 200px; min-width:180px; border:1px solid var(--line); background:#0d121b99; border-radius:14px; padding:16px 16px; text-align:left; }
+    .pillar .k { font-size:1.02rem; font-weight:700; color:#eaf3ff; display:flex; align-items:center; gap:8px; }
+    .pillar .k .dot { width:9px;height:9px;border-radius:50%; }
+    .pillar .d { font-size:0.86rem; color:var(--muted); margin-top:6px; }
+    .hero-cta { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .btn { font-size:1.0rem; font-weight:600; text-decoration:none; border-radius:12px; padding:13px 24px; transition: transform .15s, box-shadow .15s, border-color .15s, color .15s; }
+    .btn.primary { color:#0a0d14; background: linear-gradient(100deg,#6fd0ff,#8c7dff); box-shadow:0 10px 30px -10px #5cc8ff66; }
+    .btn.primary:hover { transform: translateY(-2px); box-shadow:0 16px 40px -10px #5cc8ff99; }
+    .btn.ghost { color:var(--fg); border:1px solid var(--line); background:#11162288; }
+    .btn.ghost:hover { border-color:var(--accent); color:var(--accent); }
+    section.band { border-bottom: 1px solid var(--line); }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 62px 22px; }
+    h2 { font-size: clamp(1.5rem, 4vw, 2.1rem); font-weight: 800; letter-spacing:-0.02em; margin: 0 0 6px; }
+    h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 10px; }
+    .lede { color:#cdd6e8; font-size:1.05rem; max-width: 760px; margin: 0 0 8px; }
+    p { color:#c2cce0; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px; }
+    @media (max-width:720px){ .grid2 { grid-template-columns:1fr; } }
+    .card { border:1px solid var(--line); background: linear-gradient(180deg,#11162288,#0d121b88); border-radius:14px; padding:18px 20px; }
+    .card h3 { margin:0 0 6px; font-size:1.05rem; color:#eaf3ff; }
+    .card p { margin:0; font-size:0.92rem; color:var(--muted); }
+    .bad { color:#ff8f9a; } .good { color:var(--ok); }
+    .flow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:20px; font-size:0.9rem; }
+    .flow .step { border:1px solid var(--line); background:#0d121b; border-radius:10px; padding:9px 13px; color:#dbe4f4; }
+    .flow .arrow { color:var(--accent); }
+    .personas { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:22px; }
+    @media (max-width:720px){ .personas { grid-template-columns:1fr; } }
+    .persona { border:1px solid var(--line); border-radius:14px; padding:18px 18px; background:#0d121b88; }
+    .persona .ic { font-size:1.6rem; } .persona h3 { margin:8px 0 4px; font-size:1.05rem; color:#eaf3ff; }
+    .persona ul { margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:0.9rem; } .persona li { margin:3px 0; }
+    .proof { border:1px solid #22402f; background:#0e1a14; border-radius:14px; padding:20px 22px; margin-top:20px; }
+    .proof .h { font-family:ui-monospace,monospace; color:var(--ok); font-weight:700; }
+    pre.cmd { background:#0a0f16; border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow-x:auto; font-family:ui-monospace,Consolas,monospace; font-size:0.82rem; color:#cfe3ff; margin:12px 0 0; }
+    .note { color:var(--muted); font-size:0.85rem; }
+    .disc { font-size:0.85rem; color:var(--muted); border:1px dashed var(--line); border-radius:12px; padding:14px 16px; margin-top:18px; }
+    .demolinks { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    .demolinks a { font-size:0.86rem; color:var(--muted); text-decoration:none; border:1px solid var(--line); background:#11162288; border-radius:9px; padding:7px 12px; }
+    .demolinks a:hover { border-color:var(--accent); color:var(--accent); }
+    footer { text-align:center; color:var(--muted); font-size:0.8rem; padding:28px 22px 44px; }
+    footer .badge2 { font-family: ui-monospace, monospace; color:#7fd1ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="nav">
+      <a class="brand" href="index.html">Berk <span class="dt">DT</span></a>
+      <span class="spacer"></span>
+      <a class="lnk hideSm" href="#provable">Kanıt</a>
+      <a class="lnk hideSm" href="#whatif">What-If</a>
+      <a class="lnk hideSm" href="#who">Kimler için</a>
+      <a class="lnk" href="whitepaper_tr.html">Whitepaper</a>
+      <a class="lang" href="en.html">EN</a>
+      <a class="cta" href="demos.html">Canlı demolar →</a>
+    </nav>
+  </header>
+
+  <section id="hero">
+    <canvas id="bg"></canvas>
+    <div class="glow"></div>
+    <div class="hero-in">
+      <div class="cat"><span class="pulse"></span> Kanıtlanabilir Simülasyon Altyapısı · Provable Simulation Infrastructure</div>
+      <h1>Anı çatalla.<br>Geleceği kanıtla.</h1>
+      <p class="hero-en">Deterministic · Auditable · Forkable simulation — <b>bit-identical on every machine.</b></p>
+      <p class="hero-tag">Berk DT bir fizik motoru değil, bir <b>karar-doğrulama altyapısı</b>: canlı bir durumu
+        çatallayıp olası gelecekleri değerlendirir, her adımın parmak izini alır ve aynı girdinin her makinede
+        <b>bit-aynı</b> sonucu verdiğini kanıtlar.</p>
+      <div class="pillars">
+        <div class="pillar"><div class="k"><span class="dot" style="background:#5cc8ff"></span>Deterministik</div>
+          <div class="d">Tamsayı (sabit-nokta) matematik → aynı girdi, her CPU/OS/tarayıcıda birebir aynı <span class="mono">state_hash</span>.</div></div>
+        <div class="pillar"><div class="k"><span class="dot" style="background:#4be0a0"></span>Denetlenebilir</div>
+          <div class="d">Kayıt-tekrar + kurcalamaya-duyarlı kanıt zinciri. "Ne oldu?" değil, "kanıtla."</div></div>
+        <div class="pillar"><div class="k"><span class="dot" style="background:#7a6cff"></span>Çatallanabilir</div>
+          <div class="d">Snapshot al, gelecekleri dallandır, her dalı skorla ve hash'le. Ne-olur, tekrar-üretilebilir.</div></div>
+      </div>
+      <div class="hero-cta">
+        <a class="btn primary" href="demos.html">Canlı demolara gir →</a>
+        <a class="btn ghost" href="whitepaper_tr.html">Whitepaper (TR)</a>
+        <a class="btn ghost" href="whitepaper.html">Whitepaper (EN)</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="provable">
+    <div class="wrap">
+      <h2><span class="num">01</span>Kanıtlanabilir Simülasyon</h2>
+      <p class="lede">Karar için kullanılan bir simülasyonun tek sorusu vardır: <b>ona güvenebilir misin?</b>
+        Kayan-nokta (float) tabanlı motorlarda cevap kırılgandır.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="bad">Float dünyada</span></h3>
+          <p>Aynı senaryo farklı işlemci/derleyicide farklı sonuç verir. Tahmin kendi kendine kayar; bir sapmanın
+            <b>model hatası mı, arıza mı, siber-müdahale mi</b> olduğunu ayıramazsın — eşiği gevşetir, körleşirsin.
+            "Simülasyon çalıştı" dersin ama kanıtlayamazsın.</p>
+        </div>
+        <div class="card">
+          <h3><span class="good">Berk DT'de</span></h3>
+          <p>Tüm matematik tamsayı sabit-noktadır → simülasyon tarafının gürültüsü <b>sıfır bit</b>. Aynı girdi
+            her makinede aynı <span class="mono">state_hash</span>. Sonucu tek satırla karşılaştırır, tek komutla
+            yeniden üretir, kurcalamayı anında yakalarsın.</p>
+        </div>
+      </div>
+      <div class="flow">
+        <span class="step">Aynı kurulum + aynı girdi</span><span class="arrow">→</span>
+        <span class="step mono">state_hash</span><span class="arrow">→</span>
+        <span class="step">Windows ≡ Linux ≡ macOS ≡ tarayıcı</span>
+      </div>
+      <p class="note" style="margin-top:14px;">Bu iddia her kod değişikliğinde üç platformda CI ile otomatik doğrulanır;
+        canlı görmek için <a href="mutabakat.html" style="color:var(--accent)">Hash Mutabakatı</a> ve
+        <a href="gpu.html" style="color:var(--accent)">CPU ≡ GPU ≡ tarayıcı</a> demolarına bak.</p>
+    </div>
+  </section>
+
+  <section class="band" id="whatif">
+    <div class="wrap">
+      <h2><span class="num">02</span>What-If Engine — Deterministik Ne-Olur Ağacı</h2>
+      <p class="lede">Klasik dijital ikiz <b>izler ve tekrar oynatır</b> (ne oldu?). Berk DT bir adım öteye geçer:
+        canlı durumdan <b>gelecekleri çatallar</b> (başka ne olabilirdi?).</p>
+      <div class="flow" style="margin-top:16px;">
+        <span class="step">Canlı durum (snapshot)</span><span class="arrow">→</span>
+        <span class="step">N dal çatalla</span><span class="arrow">→</span>
+        <span class="step">her dalı ileri simüle et + skorla</span><span class="arrow">→</span>
+        <span class="step mono">hash-adresli COA'lar</span>
+      </div>
+      <div class="grid2" style="margin-top:22px;">
+        <div class="card">
+          <h3>🌳 Danışman — karar uzayı keşfi</h3>
+          <p>Her dal ayrı bir plan altında koşulur, sonuç durumu skorlanır ve hash'lenir. Aynı taban + aynı plan →
+            <b>aynı sonuç</b>. Yani ürettiğin seçenekler (COA) savunulabilir ve tekrar-üretilebilir; taban durum
+            asla bozulmaz.</p>
+        </div>
+        <div class="card">
+          <h3>🛰️ Gölge İkiz — canlı doğrulama</h3>
+          <p>Gerçek sistemin yanında aynı girdilerle koşan deterministik ikiz, tahmin ile ölçüm arasındaki artığı
+            izler; sapmayı ilk karede yakalar. Simülasyon gürültüsü sıfır olduğu için eşik dar tutulabilir —
+            küçük bir yıpranma/arıza/enjeksiyon bile net kırar.</p>
+        </div>
+      </div>
+      <p class="note" style="margin-top:14px;">Danışman ve Gölge İkiz <b>Sentinel sürümünün</b> operasyonel katmanıdır;
+        rollback netcode ve kanıt zinciriyle aynı çekirdeği paylaşır.</p>
+    </div>
+  </section>
+
+  <section class="band" id="who">
+    <div class="wrap">
+      <h2><span class="num">03</span>Aynı çekirdek, üç dünya</h2>
+      <p class="lede">Karar güvenliği, operasyon optimizasyonu ve sim-to-real doğrulama — hepsi tek deterministik çekirdekle.</p>
+      <div class="personas">
+        <div class="persona">
+          <div class="ic">🛡️</div><h3>Savunma</h3>
+          <ul>
+            <li>Kanıtlanabilir COA / karar uzayı</li>
+            <li>Olay sonrası birebir yeniden üretim</li>
+            <li>Kapalı-ağ (air-gapped) dağıtım</li>
+            <li>Denetlenebilir otonomi</li>
+          </ul>
+        </div>
+        <div class="persona">
+          <div class="ic">🏭</div><h3>Endüstri / Dijital İkiz</h3>
+          <ul>
+            <li>Operasyonel gelecek ağacı (what-if)</li>
+            <li>Kestirimci bakım + anomali tespiti</li>
+            <li>Duruş/hat optimizasyonu</li>
+            <li>Kayıt-tekrar denetimi</li>
+          </ul>
+        </div>
+        <div class="persona">
+          <div class="ic">🤖</div><h3>Robotik / AI</h3>
+          <ul>
+            <li>Sim-to-real tekrar-üretilebilirlik</li>
+            <li>Deterministik sensör (LiDAR) simülasyonu</li>
+            <li>Rollback/lockstep çok-oyunculuk</li>
+            <li>Unity · Unreal · WASM · C-ABI</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="rakip">
+    <div class="wrap">
+      <h2><span class="num">04</span>Rekabet — kısa bakış</h2>
+      <p class="lede">Determinizm artık birçok motorun hedefi; fark <b>nasıl</b> sağlandığında ve <b>ne ile birlikte
+        geldiğinde</b>. Berk DT, rakiplerin ayrı ayrı tuttuğu üç şeyi tek çekirdekte birleştirir.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Float motorlar · Rapier · Jolt · Box2D · Havok</h3>
+          <p>Güçlü fizik, ama çapraz-platform determinizm float + derleyici bayraklarına bağlı (kırılgan) ve
+            karar/twin katmanı yok.</p>
+        </div>
+        <div class="card">
+          <h3>Photon Quantum · tek fixed-point eş</h3>
+          <p>Sabit-nokta ve deterministik, ama <b style="color:#eaf3ff">yalnız Unity</b> + kendi bulutu; oyun-netcode
+            odaklı, digital-twin değil.</p>
+        </div>
+      </div>
+      <p style="margin-top:14px;"><b style="color:#eaf3ff">Berk DT</b> kesişimi doldurur: inşa-gereği fixed-point
+        determinizm + gömülü karar/twin + formal doğrulama + operasyonel katman (Gölge İkiz · Danışman) — tek hafif,
+        gömülebilir çekirdek.</p>
+      <div class="hero-cta" style="margin-top:18px; justify-content:flex-start;">
+        <a class="btn ghost" href="rakip.html">📊 Detaylı rakip analizi (TR) →</a>
+        <a class="btn ghost" href="rakip_en.html">🇬🇧 Competitive analysis (EN)</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="proof">
+    <div class="wrap">
+      <h2><span class="num">05</span>Kanıtı kendin üret</h2>
+      <p class="lede">"İnan bana" demiyoruz. Determinizm sayesinde her iddia <b>tek komutla yeniden üretilebilir.</b></p>
+      <div class="proof">
+        <div class="h">✓ ~1050 test · 0 hata · 3 platformlu golden-hash CI · kurcalamaya-duyarlı denetim raporu</div>
+        <pre class="cmd"># Determinizm: golden hash her platformda birebir
+cargo test --release --test determinism_dynamics
+
+# Adli Müfettiş: koşumu üret, sonra FİZİKLE yeniden doğrula
+cargo run --bin berk-audit -- run
+cargo run --bin berk-audit -- verify report.json   # → 600 karenin tamamı yeniden üretildi ✓
+
+# 10.000 gövde: SAP ve BVH broadphase bit-AYNI hash
+cargo test --release --test scale_10k -- --ignored --nocapture</pre>
+      </div>
+      <div class="disc">
+        <b>Dürüstlük notu.</b> Determinizm <i>simülasyon</i> gürültüsünü sıfırlar, <i>model</i> hatasını değil —
+        gerçek sistem ile ikiz arası kalıcı fark (reality-gap) kalibrasyonla yönetilir. Performans rakamları
+        tek-makine, öneri niteliğindedir; sertifikalı WCET iddiası yoktur. Resmî sertifikasyonlar (DO-178C / ISO 26262)
+        henüz alınmamıştır; çekirdek bu süreçlerin talep ettiği kanıt artefaktlarını (hash logları, replay
+        sertifikası, sapma raporu, denetim izi) <b>üretmek üzere</b> tasarlanmıştır. Ayrıntı:
+        <a href="whitepaper_tr.html" style="color:var(--accent)">whitepaper</a>.
+      </div>
+      <div class="demolinks">
+        <a href="demos.html">🎮 12 demo galerisi</a>
+        <a href="zaman.html">⏳ Zaman Yolcusu</a>
+        <a href="mutabakat.html">🤝 Hash Mutabakatı</a>
+        <a href="replay.html">🔍 Determinizm müfettişi</a>
+        <a href="gpu.html">⚡ CPU≡GPU≡tarayıcı</a>
+        <a href="rakip.html">📊 Rakip analizi</a>
+        <a href="demos.html?kiosk=8">🖥️ Kiosk</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    çapraz-platform bit-aynı <span class="badge2">state_hash</span> · Berk Digital Twin ·
+    © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.
+  </footer>
+
+  <script>
+    const cv = document.getElementById('bg'), ctx = cv.getContext('2d');
+    const hero = document.getElementById('hero');
+    let W, H, parts;
+    const N = 64;
+    const rand = (a, b) => a + Math.random() * (b - a);
+    function reset(){
+      W = cv.width = hero.clientWidth; H = cv.height = hero.clientHeight;
+      parts = Array.from({length: N}, () => ({ x: rand(0,W), y: rand(0,H), vx: rand(-0.22,0.22), vy: rand(-0.22,0.22), r: rand(1.1,3.0) }));
+    }
+    addEventListener('resize', reset); reset();
+    function frame(){
+      ctx.clearRect(0,0,W,H);
+      for (const p of parts){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1; }
+      ctx.lineWidth = 1;
+      for (let i=0;i<N;i++) for (let j=i+1;j<N;j++){
+        const a=parts[i], b=parts[j], dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy;
+        if(d2<130*130){ const al=(1-Math.sqrt(d2)/130)*0.15; ctx.strokeStyle=`rgba(120,160,255,${al})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+      }
+      for (const p of parts){ ctx.fillStyle='rgba(140,180,255,0.8)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+      requestAnimationFrame(frame);
+    }
+    frame();
+  </script>
+</body>
+</html>

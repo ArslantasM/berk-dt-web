@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0f17" />
+  <title>Berk DT — Provable Simulation Infrastructure</title>
+  <meta name="description" content="Deterministic, auditable, forkable simulation. The same input yields a bit-identical result on every machine — prove every decision." />
+  <style>
+    :root { --bg:#0c0f17; --panel:#10151f; --fg:#eef2f8; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a; --ok:#4be0a0; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html, body { margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .mono { font-family: ui-monospace, Consolas, monospace; }
+    header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px); background: #0c0f17cc; border-bottom: 1px solid var(--line); }
+    .nav { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 11px 22px; }
+    .nav .brand { font-weight: 700; letter-spacing: -0.01em; text-decoration: none; }
+    .nav .brand .dt { background: linear-gradient(100deg,#5cc8ff,#7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .nav .spacer { flex: 1; }
+    .nav a.lnk { color: var(--muted); text-decoration: none; font-size: 0.86rem; padding: 6px 4px; }
+    .nav a.lnk:hover { color: var(--accent); }
+    .nav a.lang { color: var(--muted); text-decoration:none; font-size:0.82rem; border:1px solid var(--line); border-radius:8px; padding:5px 10px; }
+    .nav a.lang:hover { border-color:var(--accent); color:var(--accent); }
+    .nav a.cta { color:#0a0d14; font-weight:600; background: linear-gradient(100deg,#6fd0ff,#8c7dff); border-radius:9px; padding:8px 15px; text-decoration:none; font-size:0.88rem; }
+    @media (max-width: 760px){ .nav a.lnk.hideSm { display:none; } }
+    #hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+    #bg { position: absolute; inset: 0; z-index: 0; display: block; }
+    .glow { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(60% 50% at 50% 30%, #18203a99, transparent 70%), radial-gradient(40% 40% at 85% 90%, #2a1f4a66, transparent 70%); }
+    .hero-in { position: relative; z-index: 2; max-width: 1000px; margin: 0 auto; padding: 90px 22px 78px; text-align: center; }
+    .cat { display:inline-flex; align-items:center; gap:8px; font-size:0.76rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+      border:1px solid var(--line); background:#11162299; border-radius:999px; padding:6px 15px; margin-bottom:26px; }
+    .cat .pulse { width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 #5cc8ff80;animation:pulse 2.2s infinite; }
+    @keyframes pulse { 70%{box-shadow:0 0 0 9px #5cc8ff00;} 100%{box-shadow:0 0 0 0 #5cc8ff00;} }
+    h1 { margin: 0; font-size: clamp(2.5rem, 7vw, 4.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.02;
+      background: linear-gradient(100deg,#eaf3ff,#8fb6ff 45%,#7a6cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-en { margin: 16px auto 0; max-width: 720px; font-size: clamp(1rem,2.3vw,1.3rem); color:#cdd6e8; font-weight:600; }
+    .hero-tag { margin: 18px auto 0; max-width: 680px; color: var(--muted); font-size: 0.98rem; }
+    .pillars { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:30px auto 0; max-width:760px; }
+    .pillar { flex:1 1 200px; min-width:180px; border:1px solid var(--line); background:#0d121b99; border-radius:14px; padding:16px 16px; text-align:left; }
+    .pillar .k { font-size:1.02rem; font-weight:700; color:#eaf3ff; display:flex; align-items:center; gap:8px; }
+    .pillar .k .dot { width:9px;height:9px;border-radius:50%; }
+    .pillar .d { font-size:0.86rem; color:var(--muted); margin-top:6px; }
+    .hero-cta { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .btn { font-size:1.0rem; font-weight:600; text-decoration:none; border-radius:12px; padding:13px 24px; transition: transform .15s, box-shadow .15s, border-color .15s, color .15s; }
+    .btn.primary { color:#0a0d14; background: linear-gradient(100deg,#6fd0ff,#8c7dff); box-shadow:0 10px 30px -10px #5cc8ff66; }
+    .btn.primary:hover { transform: translateY(-2px); box-shadow:0 16px 40px -10px #5cc8ff99; }
+    .btn.ghost { color:var(--fg); border:1px solid var(--line); background:#11162288; }
+    .btn.ghost:hover { border-color:var(--accent); color:var(--accent); }
+    section.band { border-bottom: 1px solid var(--line); }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 62px 22px; }
+    h2 { font-size: clamp(1.5rem, 4vw, 2.1rem); font-weight: 800; letter-spacing:-0.02em; margin: 0 0 6px; }
+    h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 10px; }
+    .lede { color:#cdd6e8; font-size:1.05rem; max-width: 760px; margin: 0 0 8px; }
+    p { color:#c2cce0; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:22px; }
+    @media (max-width:720px){ .grid2 { grid-template-columns:1fr; } }
+    .card { border:1px solid var(--line); background: linear-gradient(180deg,#11162288,#0d121b88); border-radius:14px; padding:18px 20px; }
+    .card h3 { margin:0 0 6px; font-size:1.05rem; color:#eaf3ff; }
+    .card p { margin:0; font-size:0.92rem; color:var(--muted); }
+    .bad { color:#ff8f9a; } .good { color:var(--ok); }
+    .flow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:20px; font-size:0.9rem; }
+    .flow .step { border:1px solid var(--line); background:#0d121b; border-radius:10px; padding:9px 13px; color:#dbe4f4; }
+    .flow .arrow { color:var(--accent); }
+    .personas { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:22px; }
+    @media (max-width:720px){ .personas { grid-template-columns:1fr; } }
+    .persona { border:1px solid var(--line); border-radius:14px; padding:18px 18px; background:#0d121b88; }
+    .persona .ic { font-size:1.6rem; } .persona h3 { margin:8px 0 4px; font-size:1.05rem; color:#eaf3ff; }
+    .persona ul { margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:0.9rem; } .persona li { margin:3px 0; }
+    .proof { border:1px solid #22402f; background:#0e1a14; border-radius:14px; padding:20px 22px; margin-top:20px; }
+    .proof .h { font-family:ui-monospace,monospace; color:var(--ok); font-weight:700; }
+    pre.cmd { background:#0a0f16; border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow-x:auto; font-family:ui-monospace,Consolas,monospace; font-size:0.82rem; color:#cfe3ff; margin:12px 0 0; }
+    .note { color:var(--muted); font-size:0.85rem; }
+    .disc { font-size:0.85rem; color:var(--muted); border:1px dashed var(--line); border-radius:12px; padding:14px 16px; margin-top:18px; }
+    .demolinks { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    .demolinks a { font-size:0.86rem; color:var(--muted); text-decoration:none; border:1px solid var(--line); background:#11162288; border-radius:9px; padding:7px 12px; }
+    .demolinks a:hover { border-color:var(--accent); color:var(--accent); }
+    footer { text-align:center; color:var(--muted); font-size:0.8rem; padding:28px 22px 44px; }
+    footer .badge2 { font-family: ui-monospace, monospace; color:#7fd1ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="nav">
+      <a class="brand" href="index.html">Berk <span class="dt">DT</span></a>
+      <span class="spacer"></span>
+      <a class="lnk hideSm" href="#provable">Proof</a>
+      <a class="lnk hideSm" href="#whatif">What-If</a>
+      <a class="lnk hideSm" href="#who">Who it's for</a>
+      <a class="lnk" href="whitepaper.html">Whitepaper</a>
+      <a class="lang" href="tr.html">TR</a>
+      <a class="cta" href="demos.html">Live demos →</a>
+    </nav>
+  </header>
+
+  <section id="hero">
+    <canvas id="bg"></canvas>
+    <div class="glow"></div>
+    <div class="hero-in">
+      <div class="cat"><span class="pulse"></span> Provable Simulation Infrastructure</div>
+      <h1>Fork the present.<br>Prove the future.</h1>
+      <p class="hero-en">Deterministic · Auditable · Forkable simulation — <b>bit-identical on every machine.</b></p>
+      <p class="hero-tag">Berk DT isn't a physics engine — it's a <b>decision-verification infrastructure</b>: it forks
+        a live state to evaluate possible futures, fingerprints every step, and proves that the same input yields a
+        <b>bit-identical</b> result on every machine.</p>
+      <div class="pillars">
+        <div class="pillar"><div class="k"><span class="dot" style="background:#5cc8ff"></span>Deterministic</div>
+          <div class="d">Fixed-point (integer) math → the same input, the exact same <span class="mono">state_hash</span> on every CPU/OS/browser.</div></div>
+        <div class="pillar"><div class="k"><span class="dot" style="background:#4be0a0"></span>Auditable</div>
+          <div class="d">Record-replay + a tamper-evident proof chain. Not "what happened?" but "prove it."</div></div>
+        <div class="pillar"><div class="k"><span class="dot" style="background:#7a6cff"></span>Forkable</div>
+          <div class="d">Snapshot, branch the futures, score and hash each one. What-if — reproducible.</div></div>
+      </div>
+      <div class="hero-cta">
+        <a class="btn primary" href="demos.html">Enter live demos →</a>
+        <a class="btn ghost" href="whitepaper.html">Whitepaper (EN)</a>
+        <a class="btn ghost" href="whitepaper_tr.html">Whitepaper (TR)</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="provable">
+    <div class="wrap">
+      <h2><span class="num">01</span>Provable Simulation</h2>
+      <p class="lede">A simulation used to make a decision has one question: <b>can you trust it?</b>
+        On floating-point engines, the answer is fragile.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="bad">In the float world</span></h3>
+          <p>The same scenario yields different results on a different CPU/compiler. The prediction drifts on its own;
+            you can't tell whether a divergence is <b>model error, a fault, or cyber-tampering</b> — so you loosen the
+            threshold and go blind. "The simulation ran" is a claim you can't prove.</p>
+        </div>
+        <div class="card">
+          <h3><span class="good">In Berk DT</span></h3>
+          <p>All math is fixed-point integer → the simulation side has <b>zero-bit noise</b>. The same input, the same
+            <span class="mono">state_hash</span> on every machine. You compare the result in one line, reproduce it in
+            one command, and catch tampering instantly.</p>
+        </div>
+      </div>
+      <div class="flow">
+        <span class="step">Same setup + same input</span><span class="arrow">→</span>
+        <span class="step mono">state_hash</span><span class="arrow">→</span>
+        <span class="step">Windows ≡ Linux ≡ macOS ≡ browser</span>
+      </div>
+      <p class="note" style="margin-top:14px;">This claim is auto-verified by CI on three platforms on every change;
+        see it live in the <a href="mutabakat.html" style="color:var(--accent)">Hash Consensus</a> and
+        <a href="gpu.html" style="color:var(--accent)">CPU ≡ GPU ≡ browser</a> demos.</p>
+    </div>
+  </section>
+
+  <section class="band" id="whatif">
+    <div class="wrap">
+      <h2><span class="num">02</span>What-If Engine — Deterministic Future Tree</h2>
+      <p class="lede">A classic digital twin <b>monitors and replays</b> (what happened?). Berk DT goes one step
+        further: it <b>forks futures</b> from a live state (what else could have happened?).</p>
+      <div class="flow" style="margin-top:16px;">
+        <span class="step">Live state (snapshot)</span><span class="arrow">→</span>
+        <span class="step">fork N branches</span><span class="arrow">→</span>
+        <span class="step">simulate each forward + score</span><span class="arrow">→</span>
+        <span class="step mono">hash-addressed COAs</span>
+      </div>
+      <div class="grid2" style="margin-top:22px;">
+        <div class="card">
+          <h3>🌳 Advisor — decision-space exploration</h3>
+          <p>Each branch runs under a distinct plan; the result state is scored and hashed. Same base + same plan →
+            <b>same result</b>. The options (COAs) you produce are defensible and reproducible; the base state is
+            never mutated.</p>
+        </div>
+        <div class="card">
+          <h3>🛰️ Shadow Twin — live verification</h3>
+          <p>A deterministic twin runs beside the real system on the same inputs, tracking the residual between
+            prediction and measurement and raising an alarm on the first frame of divergence. With zero simulation
+            noise the threshold can be tight — a small wear/fault/injection trips it cleanly.</p>
+        </div>
+      </div>
+      <p class="note" style="margin-top:14px;">Advisor and Shadow Twin are the operational layer of the
+        <b>Sentinel edition</b>; they share the same core as rollback netcode and the proof chain.</p>
+    </div>
+  </section>
+
+  <section class="band" id="who">
+    <div class="wrap">
+      <h2><span class="num">03</span>One core, three worlds</h2>
+      <p class="lede">Decision safety, operational optimization, and sim-to-real verification — all from a single deterministic core.</p>
+      <div class="personas">
+        <div class="persona">
+          <div class="ic">🛡️</div><h3>Defense</h3>
+          <ul>
+            <li>Provable COA / decision space</li>
+            <li>After-action bit-for-bit reproduction</li>
+            <li>Air-gapped deployment</li>
+            <li>Auditable autonomy</li>
+          </ul>
+        </div>
+        <div class="persona">
+          <div class="ic">🏭</div><h3>Industry / Digital Twin</h3>
+          <ul>
+            <li>Operational future tree (what-if)</li>
+            <li>Predictive maintenance + anomaly detection</li>
+            <li>Shutdown / line optimization</li>
+            <li>Record-replay audit</li>
+          </ul>
+        </div>
+        <div class="persona">
+          <div class="ic">🤖</div><h3>Robotics / AI</h3>
+          <ul>
+            <li>Sim-to-real reproducibility</li>
+            <li>Deterministic sensor (LiDAR) simulation</li>
+            <li>Rollback/lockstep multiplayer</li>
+            <li>Unity · Unreal · WASM · C-ABI</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="rakip">
+    <div class="wrap">
+      <h2><span class="num">04</span>Competition — at a glance</h2>
+      <p class="lede">Determinism is now the goal of many engines; the difference is <b>how</b> it's achieved and
+        <b>what it comes with</b>. Berk DT unites in one core the three things competitors hold separately.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Float engines · Rapier · Jolt · Box2D · Havok</h3>
+          <p>Strong physics, but cross-platform determinism depends on float + compiler flags (fragile) and there's no
+            decision/twin layer.</p>
+        </div>
+        <div class="card">
+          <h3>Photon Quantum · the only fixed-point peer</h3>
+          <p>Fixed-point and deterministic, but <b style="color:#eaf3ff">Unity only</b> + its own cloud; game-netcode
+            focused, not a digital twin.</p>
+        </div>
+      </div>
+      <p style="margin-top:14px;"><b style="color:#eaf3ff">Berk DT</b> fills the intersection: by-construction
+        fixed-point determinism + an embedded decision/twin layer + formal verification + an operational layer (Shadow
+        Twin · Advisor) — a single lightweight, embeddable core.</p>
+      <div class="hero-cta" style="margin-top:18px; justify-content:flex-start;">
+        <a class="btn ghost" href="rakip_en.html">📊 Detailed competitive analysis (EN) →</a>
+        <a class="btn ghost" href="rakip.html">🇹🇷 Rakip analizi (TR)</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="proof">
+    <div class="wrap">
+      <h2><span class="num">05</span>Reproduce it yourself</h2>
+      <p class="lede">We don't say "trust us." Thanks to determinism, every claim is <b>reproducible in one command.</b></p>
+      <div class="proof">
+        <div class="h">✓ ~1050 tests · 0 failures · 3-platform golden-hash CI · tamper-evident audit report</div>
+        <pre class="cmd"># Determinism: the golden hash is bit-identical on every platform
+cargo test --release --test determinism_dynamics
+
+# Forensic Inspector: generate a run, then re-verify it by PHYSICS
+cargo run --bin berk-audit -- run
+cargo run --bin berk-audit -- verify report.json   # → all 600 frames reproduced ✓
+
+# 10,000 bodies: SAP and BVH broadphase produce the SAME hash
+cargo test --release --test scale_10k -- --ignored --nocapture</pre>
+      </div>
+      <div class="disc">
+        <b>Honesty note.</b> Determinism removes <i>simulation</i> noise, not <i>model</i> error — the persistent gap
+        between a real asset and its twin (the reality-gap) is managed by calibration. Performance figures are
+        single-machine and advisory; no certified WCET is claimed. Formal certifications (DO-178C / ISO 26262) are not
+        held yet; the core is <b>designed to produce</b> the evidence artifacts those processes require (hash logs,
+        replay certificate, divergence report, audit trail). Details in the
+        <a href="whitepaper.html" style="color:var(--accent)">whitepaper</a>.
+      </div>
+      <div class="demolinks">
+        <a href="demos.html">🎮 12-demo gallery</a>
+        <a href="zaman.html">⏳ Time Traveler</a>
+        <a href="mutabakat.html">🤝 Hash Consensus</a>
+        <a href="replay.html">🔍 Determinism inspector</a>
+        <a href="gpu.html">⚡ CPU≡GPU≡browser</a>
+        <a href="rakip.html">📊 Competitive analysis</a>
+        <a href="demos.html?kiosk=8">🖥️ Kiosk</a>
+      </div>
+      <p class="note" style="margin-top:12px;">Note: the interactive demos are currently labeled in Turkish, but they
+        are visual and language-light — the hash badges, controls, and effects read the same in any language.</p>
+    </div>
+  </section>
+
+  <footer>
+    cross-platform bit-identical <span class="badge2">state_hash</span> · Berk Digital Twin ·
+    © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş.
+  </footer>
+
+  <script>
+    const cv = document.getElementById('bg'), ctx = cv.getContext('2d');
+    const hero = document.getElementById('hero');
+    let W, H, parts;
+    const N = 64;
+    const rand = (a, b) => a + Math.random() * (b - a);
+    function reset(){
+      W = cv.width = hero.clientWidth; H = cv.height = hero.clientHeight;
+      parts = Array.from({length: N}, () => ({ x: rand(0,W), y: rand(0,H), vx: rand(-0.22,0.22), vy: rand(-0.22,0.22), r: rand(1.1,3.0) }));
+    }
+    addEventListener('resize', reset); reset();
+    function frame(){
+      ctx.clearRect(0,0,W,H);
+      for (const p of parts){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1; }
+      ctx.lineWidth = 1;
+      for (let i=0;i<N;i++) for (let j=i+1;j<N;j++){
+        const a=parts[i], b=parts[j], dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy;
+        if(d2<130*130){ const al=(1-Math.sqrt(d2)/130)*0.15; ctx.strokeStyle=`rgba(120,160,255,${al})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+      }
+      for (const p of parts){ ctx.fillStyle='rgba(140,180,255,0.8)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+      requestAnimationFrame(frame);
+    }
+    frame();
+  </script>
+</body>
+</html>

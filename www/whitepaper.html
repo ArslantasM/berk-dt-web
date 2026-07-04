@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0f17" />
+  <title>Provable Simulation as Verifiable Decision Infrastructure — Berk DT Whitepaper</title>
+  <style>
+    :root { --bg:#0c0f17; --fg:#e9eef6; --muted:#9aa6bd; --accent:#5cc8ff; --accent2:#7a6cff; --line:#222a3a; --ok:#4be0a0; --card:#10151f; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family: Georgia, "Times New Roman", serif; line-height:1.7; -webkit-font-smoothing:antialiased; }
+    .mono { font-family: ui-monospace, Consolas, monospace; }
+    header { position:sticky; top:0; z-index:10; backdrop-filter:blur(10px); background:#0c0f17cc; border-bottom:1px solid var(--line); font-family:system-ui,sans-serif; }
+    .nav { max-width:820px; margin:0 auto; display:flex; align-items:center; gap:14px; padding:10px 22px; font-size:0.88rem; }
+    .nav a { color:var(--muted); text-decoration:none; } .nav a:hover { color:var(--accent); } .nav .spacer{ flex:1; }
+    .nav .brand { font-weight:700; color:var(--fg); } .nav .brand .dt{ background:linear-gradient(100deg,#5cc8ff,#7a6cff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    main { max-width:820px; margin:0 auto; padding:48px 22px 90px; }
+    .eyebrow { font-family:system-ui,sans-serif; font-size:0.76rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--accent); }
+    h1 { font-family:system-ui,sans-serif; font-size:clamp(1.9rem,5vw,2.9rem); line-height:1.1; letter-spacing:-0.02em; margin:10px 0 6px; }
+    .authors { color:var(--muted); font-family:system-ui,sans-serif; font-size:0.9rem; margin-bottom:26px; }
+    .abstract { border-left:3px solid var(--accent2); background:#11162244; padding:16px 20px; border-radius:0 12px 12px 0; color:#d6deee; font-size:1.02rem; }
+    h2 { font-family:system-ui,sans-serif; font-size:1.4rem; letter-spacing:-0.01em; margin:44px 0 8px; }
+    h2 .num { color:var(--accent); margin-right:10px; }
+    h3 { font-family:system-ui,sans-serif; font-size:1.06rem; margin:24px 0 4px; color:#dbe4f4; }
+    p { color:#cdd6e8; } a.inline { color:var(--accent); }
+    .callout { border:1px solid var(--line); background:var(--card); border-radius:12px; padding:14px 18px; margin:18px 0; font-family:system-ui,sans-serif; font-size:0.95rem; }
+    .callout.warn { border-color:#4a3a20; background:#171207; }
+    .callout.good { border-color:#22402f; background:#0e1a14; }
+    pre { background:#0a0f16; border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow-x:auto; font-family:ui-monospace,Consolas,monospace; font-size:0.82rem; color:#cfe3ff; }
+    table { border-collapse:collapse; width:100%; font-family:system-ui,sans-serif; font-size:0.9rem; margin:16px 0; }
+    th,td { border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top; }
+    th { background:#131a27; color:#dbe4f4; }
+    ul.clean { list-style:none; padding:0; } ul.clean li { position:relative; padding:6px 0 6px 24px; color:#c8d2e6; }
+    ul.clean li:before { content:"▸"; color:var(--accent); position:absolute; left:4px; top:6px; }
+    .foot { color:var(--muted); font-size:0.82rem; font-family:system-ui,sans-serif; border-top:1px solid var(--line); margin-top:44px; padding-top:20px; }
+    .printbtn { font-family:system-ui,sans-serif; font-size:0.82rem; color:#0a0d14; background:linear-gradient(100deg,#6fd0ff,#8c7dff); border:none; border-radius:8px; padding:8px 14px; cursor:pointer; }
+    @media print {
+      header, .printbtn { display:none; }
+      body { background:#fff; color:#111; }
+      .abstract, .callout, pre, th { background:#f4f6fa; }
+      p, td, ul.clean li { color:#222; } h1,h2,h3 { color:#000; }
+      main { max-width:none; padding:0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="nav">
+      <a class="brand" href="en.html">Berk <span class="dt">DT</span></a>
+      <span class="spacer"></span>
+      <a href="en.html">Home</a>
+      <a href="whitepaper_tr.html">🇹🇷 Türkçe</a>
+      <a href="demos.html">Live demos</a>
+      <button class="printbtn" onclick="window.print()">Print / PDF</button>
+    </nav>
+  </header>
+
+  <main>
+    <div class="eyebrow">Whitepaper · Berk Digital Twin</div>
+    <h1>Provable Simulation as Verifiable Decision Infrastructure</h1>
+    <div class="authors">LL BERK Yazılım Teknolojileri A.Ş. · 2026 · v1 &nbsp;|&nbsp; A technical position paper on deterministic, auditable, forkable simulation.</div>
+
+    <div class="abstract">
+      <b>Abstract.</b> Simulation is increasingly used not to visualize, but to <i>decide</i> — which course of
+      action to take, whether a running system is behaving correctly, whether an autonomous decision was justified.
+      Yet the simulations these decisions rest on are usually built on floating-point arithmetic, which is neither
+      reproducible across machines nor separable from its own numerical drift. This paper argues that a decision-grade
+      simulation needs four properties that ordinary engines lack: it must be <b>deterministic</b> (bit-identical on
+      every platform), <b>replayable</b>, <b>forkable</b> (able to explore alternative futures), and <b>provable</b>
+      (every run cryptographically addressable and tamper-evident). We describe how Berk DT delivers all four from a
+      single fixed-point core, what this unlocks for defense, industry, and robotics — and, just as importantly, what
+      determinism does <i>not</i> guarantee.
+    </div>
+
+    <h2><span class="num">1</span>The problem: decisions need simulation you can trust</h2>
+    <p>A physics engine that renders a plausible-looking scene is a solved problem. A simulation whose output you are
+      willing to <i>act on</i> is not. The moment a simulation informs a real decision — engage or hold, ship or halt,
+      trust the sensor or not — three questions become unavoidable:</p>
+    <ul class="clean">
+      <li><b>Reproducibility:</b> if we run the same scenario again, on another machine, do we get the same answer?</li>
+      <li><b>Attribution:</b> when the simulation and reality diverge, is it model error, a real fault, or tampering?</li>
+      <li><b>Defensibility:</b> can we prove, after the fact, what the system computed and why?</li>
+    </ul>
+    <p>For most simulation stacks, the honest answer to all three is "not really." That gap is not a UX problem; it is
+      the difference between a demo and an instrument.</p>
+
+    <h2><span class="num">2</span>Why floating-point simulation fails the trust test</h2>
+    <p>IEEE-754 floating-point results depend on compiler flags, fused-multiply-add availability, instruction ordering,
+      and thread scheduling. The same code can produce slightly different last bits on a different CPU, and those tiny
+      differences compound over a simulation's timeline. Three consequences follow:</p>
+    <div class="callout warn">
+      <b>1. No cross-platform ground truth.</b> "It worked in our lab" does not mean it works on the deployed hardware,
+      the partner's machine, or next year's compiler. There is no single answer to compare against.<br><br>
+      <b>2. Drift masks faults.</b> If the prediction wanders on its own, you cannot set a tight tolerance between
+      predicted and measured state — because you can't tell model drift from a genuine anomaly. You loosen the
+      threshold, and the monitor goes blind exactly when it matters.<br><br>
+      <b>3. Nothing to sign.</b> If the result isn't bit-stable, there is no canonical value to hash, log, or certify.
+      "The simulation ran" is a claim, not evidence.
+    </div>
+    <p>Determinism is often treated as a nice-to-have for lockstep multiplayer. For decision-grade simulation it is the
+      foundation everything else stands on.</p>
+
+    <h2><span class="num">3</span>Why replay is necessary — but not sufficient</h2>
+    <p>Record-and-replay is the first thing a serious simulation stack adds: capture the seed and ordered inputs, and
+      you can reproduce a run. This answers "what happened?" and is essential for debugging and audit. But it has two
+      limits. First, on a float engine, replay is only reproducible on the <i>same</i> binary — it is not a
+      cross-platform proof. Second, and more fundamentally, replay only tells you about the timeline that actually
+      occurred. It cannot answer the question decision-makers actually ask:</p>
+    <div class="callout"><b>Not "what happened?" but "what else could have happened — and which choice was best?"</b></div>
+    <p>Answering that requires branching the present into alternative futures. Replay is a line; decisions live in a tree.</p>
+
+    <h2><span class="num">4</span>Why fork is the missing layer</h2>
+    <p>If a simulation is deterministic and can snapshot/restore its full state, then from any live moment you can
+      <b>fork</b> it: take a snapshot, run branch A under one plan, restore, run branch B under another, and so on.
+      Each branch ends in a state you can score (how good is this outcome?) and address by hash (which exact future is
+      this?). Because the core is deterministic, the same base plus the same plan always yields the same branch — so
+      the set of options you produce is <b>reproducible and defensible</b>, not a one-off Monte-Carlo artifact.</p>
+    <p>This is the difference between monitoring and decision support:</p>
+    <table>
+      <tr><th>Capability</th><th>Classic digital twin</th><th>Berk DT</th></tr>
+      <tr><td>Live state</td><td>Monitor</td><td>Monitor + <b>Shadow Twin</b> residual check</td></tr>
+      <tr><td>Past</td><td>Replay</td><td>Replay + tamper-evident audit chain</td></tr>
+      <tr><td>Future</td><td>—</td><td><b>Forkable, scored, hash-addressed futures</b> (Advisor)</td></tr>
+    </table>
+    <p>The <b>Advisor</b> forks the present into course-of-action branches and ranks them; the <b>Shadow Twin</b> runs
+      a deterministic copy beside the real asset on the same inputs and raises an alarm the first frame the measured
+      state departs from the prediction. Both are the operational face of the same deterministic core.</p>
+
+    <h2><span class="num">5</span>Why hash is the binding that makes it provable</h2>
+    <p>A deterministic run produces, at every step, a 64-bit <span class="mono">state_hash</span> — a fingerprint of
+      the full carry-over state. This single value does an enormous amount of work:</p>
+    <ul class="clean">
+      <li><b>Cross-platform proof:</b> two machines that agree on the hash agree on every bit of the simulation. CI
+        checks this on Linux, Windows, and macOS on every change.</li>
+      <li><b>Tamper-evidence:</b> a run report can be sealed with a metadata-seeded hash chain; altering any frame,
+        parameter, or the seal itself breaks verification. The report is proven not by a signature but by
+        <i>re-running</i> the scenario — physics replaces the notary.</li>
+      <li><b>Addressable futures:</b> each forked branch is identified by its result hash, so a course of action can be
+        cited, compared, and reproduced exactly.</li>
+      <li><b>Divergence forensics:</b> comparing two per-frame hash traces pinpoints the first frame where two runs
+        (or a run and reality) parted ways.</li>
+    </ul>
+
+    <h2><span class="num">6</span>How Berk DT delivers all four</h2>
+    <p>A single Rust core, consumed through a C-ABI (plus Unity, Unreal, and WebAssembly bindings), provides:</p>
+    <ul class="clean">
+      <li><b>Deterministic:</b> all simulation math is fixed-point (Q32.32) integer arithmetic; trigonometry via
+        CORDIC, square root via a deterministic integer method. No IEEE float touches the state that feeds
+        <span class="mono">state_hash</span>.</li>
+      <li><b>Replayable:</b> seed + ordered input + periodic hash reproduce a run exactly and detect divergence; full
+        snapshot/restore serializes the carry-over state to bytes and back, bit-identically.</li>
+      <li><b>Forkable:</b> the Advisor (deterministic what-if tree) and rollback netcode both build on the same atomic
+        snapshot path — a branch can never corrupt its base.</li>
+      <li><b>Provable:</b> cross-platform golden-hash CI, a tamper-evident audit report tool, a divergence debugger,
+        and formal (TLA+) models of the concurrency and decision logic.</li>
+    </ul>
+    <div class="callout good">
+      The physics breadth (2D/3D rigid bodies, joints, CCD, convex/compound shapes, cloth, fluid, vehicles, character
+      controller, deterministic LiDAR) is real and tested — but it is the substrate, not the product. The product is
+      the four properties above applied to decisions.
+    </div>
+
+    <h2><span class="num">7</span>What this unlocks</h2>
+    <h3>Defense — decision safety</h3>
+    <p>Course-of-action analysis where the option space is provable rather than a one-off scenario; after-action
+      analysis where a field event can be reproduced bit-for-bit (given deterministically logged inputs) and
+      alternative decision branches explored; air-gapped deployment with no external dependency; auditable autonomy
+      where every decision carries an epistemic state, authority level, and provenance hash.</p>
+    <h3>Industry — operational optimization</h3>
+    <p>An operational future tree for what-if planning (shutdown optimization, supply-chain forks); a shadow twin for
+      predictive maintenance and anomaly/tamper detection with a threshold tight enough to be useful; reproducible
+      audit of every run.</p>
+    <h3>Robotics / AI — sim-to-real verification</h3>
+    <p>Reproducible training and evaluation; deterministic sensor (LiDAR/range) simulation for closed sensor-loop
+      replay; a complementary "ground-truth execution layer" beside GPU training stacks. <b>Train anywhere; execute
+      provably.</b></p>
+
+    <h2><span class="num">8</span>What determinism does <i>not</i> guarantee</h2>
+    <p>The credibility of this entire position depends on being precise about its limits. Overclaiming here is how you
+      lose a technical audience — so we are explicit:</p>
+    <div class="callout warn">
+      <b>Determinism removes simulation noise, not model error.</b> The Shadow Twin's residual is only as meaningful as
+      the fidelity of the model; the persistent gap between a real asset and its twin (the reality-gap) is managed by
+      calibration, and the alarm threshold is set above that band. Determinism makes the <i>simulation side</i> of the
+      comparison exact — it does not make the model correct.<br><br>
+      <b>Performance figures are advisory.</b> They are single-machine measurements; no certified worst-case execution
+      time (WCET) is claimed in public material.<br><br>
+      <b>No formal certification yet.</b> DO-178C / ISO 26262 and similar are not held today. The core is <i>designed
+      to produce the evidence artifacts</i> those processes require — hash logs, replay certificate, divergence report,
+      audit trail, requirement traceability, TLA+ models — and to keep the certification path open (stable-only safety
+      core, documented toolchain alignment). "Aligned with" a standard is a claim we do not make without the evidence.<br><br>
+      <b>Fork is not free search.</b> The Advisor forks and scores branches deterministically; producing <i>good</i>
+      options still depends on the scoring function and the branch-generation strategy. It is a reproducible evaluation
+      substrate, not an oracle.
+    </div>
+    <p>These are not weaknesses to hide; they are the boundary that makes everything inside it trustworthy. The
+      strongest version of this pitch is the honest one.</p>
+
+    <h2><span class="num">9</span>Reproduce it yourself</h2>
+    <p>Every claim above is backed by artifacts that live in the repository and re-run on demand:</p>
+    <pre># Determinism: the golden hash is bit-identical on every platform
+cargo test --release --test determinism_dynamics
+
+# Forensic report: generate a run, then re-verify it by PHYSICS (not a signature)
+cargo run --bin berk-audit -- run
+cargo run --bin berk-audit -- verify report.json
+
+# Scale: at 10,001 bodies, two different broadphases produce the SAME hash
+cargo test --release --test scale_10k -- --ignored --nocapture
+
+# ~1050 tests, 0 failures
+cargo test</pre>
+    <p>Live, in-browser proofs: the <a class="inline" href="mutabakat.html">Hash Consensus</a> demo (the same sim on
+      every device yields the same fingerprint), the <a class="inline" href="gpu.html">CPU ≡ GPU ≡ browser</a> identity
+      demo, and the <a class="inline" href="zaman.html">Time Traveler</a> (seal the future, then verify it live).</p>
+
+    <h2>Conclusion</h2>
+    <p>Berk DT is not, at its core, a physics engine, a digital twin, or netcode — those are surfaces. It is a
+      <b>deterministic, auditable, forkable reality engine</b>: an infrastructure for making decisions you can prove.
+      Told as a physics engine, it competes on features it does not need to. Told as verifiable decision
+      infrastructure, it opens a category where the alternative is trust without proof — and in defense, industry, and
+      safety-critical robotics, trust without proof is not enough.</p>
+
+    <div class="foot">
+      © 2026 LL BERK YAZILIM TEKNOLOJİLERİ A.Ş. — All rights reserved. This document is for informational purposes;
+      product capabilities evolve. Reproduction figures reflect the repository's automated tests and measurements;
+      detailed evidence is shared under NDA as part of technical due diligence.
+    </div>
+  </main>
+</body>
+</html>

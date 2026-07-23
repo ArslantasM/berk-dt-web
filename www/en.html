@@ -261,7 +261,7 @@ cargo run --bin berk-audit -- verify report.json   # → all 600 frames reproduc
 cargo test --release --test scale_10k -- --ignored --nocapture</pre>
       </div>
       <div class="disc">
-        <b>Honesty note.</b> Determinism removes <i>simulation</i> noise, not <i>model</i> error — the persistent gap
+        <b>Note;</b> Determinism removes <i>simulation</i> noise, not <i>model</i> error — the persistent gap
         between a real asset and its twin (the reality-gap) is managed by calibration. Performance figures are
         single-machine and advisory; no certified WCET is claimed. Formal certifications (DO-178C / ISO 26262) are not
         held yet; the core is <b>designed to produce</b> the evidence artifacts those processes require (hash logs,

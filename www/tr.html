@@ -164,13 +164,13 @@
       </div>
       <div class="grid2" style="margin-top:22px;">
         <div class="card">
-          <h3>🌳 Danışman — karar uzayı keşfi</h3>
+          <h3> Danışman — karar uzayı keşfi</h3>
           <p>Her dal ayrı bir plan altında koşulur, sonuç durumu skorlanır ve hash'lenir. Aynı taban + aynı plan →
             <b>aynı sonuç</b>. Yani ürettiğin seçenekler (COA) savunulabilir ve tekrar-üretilebilir; taban durum
             asla bozulmaz.</p>
         </div>
         <div class="card">
-          <h3>🛰️ Gölge İkiz — canlı doğrulama</h3>
+          <h3> Gölge İkiz — canlı doğrulama</h3>
           <p>Gerçek sistemin yanında aynı girdilerle koşan deterministik ikiz, tahmin ile ölçüm arasındaki artığı
             izler; sapmayı ilk karede yakalar. Simülasyon gürültüsü sıfır olduğu için eşik dar tutulabilir —
             küçük bir yıpranma/arıza/enjeksiyon bile net kırar.</p>
@@ -187,7 +187,7 @@
       <p class="lede">Karar güvenliği, operasyon optimizasyonu ve sim-to-real doğrulama — hepsi tek deterministik çekirdekle.</p>
       <div class="personas">
         <div class="persona">
-          <div class="ic">🛡️</div><h3>Savunma</h3>
+          <div class="ic"></div><h3>Savunma</h3>
           <ul>
             <li>Kanıtlanabilir COA / karar uzayı</li>
             <li>Olay sonrası birebir yeniden üretim</li>
@@ -196,7 +196,7 @@
           </ul>
         </div>
         <div class="persona">
-          <div class="ic">🏭</div><h3>Endüstri / Dijital İkiz</h3>
+          <div class="ic"></div><h3>Endüstri / Dijital İkiz</h3>
           <ul>
             <li>Operasyonel gelecek ağacı (what-if)</li>
             <li>Kestirimci bakım + anomali tespiti</li>
@@ -205,7 +205,7 @@
           </ul>
         </div>
         <div class="persona">
-          <div class="ic">🤖</div><h3>Robotik / AI</h3>
+          <div class="ic"></div><h3>Robotik / AI</h3>
           <ul>
             <li>Sim-to-real tekrar-üretilebilirlik</li>
             <li>Deterministik sensör (LiDAR) simülasyonu</li>
@@ -238,7 +238,7 @@
         determinizm + gömülü karar/twin + formal doğrulama + operasyonel katman (Gölge İkiz · Danışman) — tek hafif,
         gömülebilir çekirdek.</p>
       <div class="hero-cta" style="margin-top:18px; justify-content:flex-start;">
-        <a class="btn ghost" href="rakip.html">📊 Detaylı rakip analizi (TR) →</a>
+        <a class="btn ghost" href="rakip.html"> Detaylı rakip analizi (TR) →</a>
         <a class="btn ghost" href="rakip_en.html">🇬🇧 Competitive analysis (EN)</a>
       </div>
     </div>
@@ -261,7 +261,7 @@ cargo run --bin berk-audit -- verify report.json   # → 600 karenin tamamı yen
 cargo test --release --test scale_10k -- --ignored --nocapture</pre>
       </div>
       <div class="disc">
-        <b>Dürüstlük notu.</b> Determinizm <i>simülasyon</i> gürültüsünü sıfırlar, <i>model</i> hatasını değil —
+        <b>Not;</b> Determinizm <i>simülasyon</i> gürültüsünü sıfırlar, <i>model</i> hatasını değil —
         gerçek sistem ile ikiz arası kalıcı fark (reality-gap) kalibrasyonla yönetilir. Performans rakamları
         tek-makine, öneri niteliğindedir; sertifikalı WCET iddiası yoktur. Resmî sertifikasyonlar (DO-178C / ISO 26262)
         henüz alınmamıştır; çekirdek bu süreçlerin talep ettiği kanıt artefaktlarını (hash logları, replay
@@ -269,12 +269,12 @@ cargo test --release --test scale_10k -- --ignored --nocapture</pre>
         <a href="whitepaper_tr.html" style="color:var(--accent)">whitepaper</a>.
       </div>
       <div class="demolinks">
-        <a href="demos.html">🎮 12 demo galerisi</a>
-        <a href="zaman.html">⏳ Zaman Yolcusu</a>
-        <a href="mutabakat.html">🤝 Hash Mutabakatı</a>
-        <a href="replay.html">🔍 Determinizm müfettişi</a>
-        <a href="gpu.html">⚡ CPU≡GPU≡tarayıcı</a>
-        <a href="rakip.html">📊 Rakip analizi</a>
+        <a href="demos.html"> 12 demo galerisi</a>
+        <a href="zaman.html"> Zaman Yolcusu</a>
+        <a href="mutabakat.html"> Hash Mutabakatı</a>
+        <a href="replay.html"> Determinizm müfettişi</a>
+        <a href="gpu.html"> CPU≡GPU≡tarayıcı</a>
+        <a href="rakip.html"> Rakip analizi</a>
         <a href="demos.html?kiosk=8">🖥️ Kiosk</a>
       </div>
     </div>
